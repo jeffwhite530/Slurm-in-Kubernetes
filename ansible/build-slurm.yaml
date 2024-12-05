@@ -1,0 +1,104 @@
+---
+- name: Build Slurm
+  hosts: all
+  become: false
+  vars:
+    # Set the variable below or run with: ansible-playbook --extra-vars "slurm_source_url=x" file.yaml
+    #slurm_source_url: "https://github.com/SchedMD/slurm/archive/refs/tags/slurm-24-11-0-1.tar.gz"
+
+  tasks:
+    - name: Install required packages
+      package:
+        name:
+          - apt-utils
+          - build-essential
+          - fakeroot
+          - devscripts
+          - equivs
+          - curl
+          - file
+          - libswitch-perl
+          - munge
+        state: present
+
+    - name: Download Slurm source tarball
+      get_url:
+        url: "{{ slurm_source_url }}"
+        dest: /tmp/slurm.tar.gz
+        mode: '0644'
+
+    - name: Ensure Slurm source directory exists
+      file:
+        path: /tmp/slurm-source
+        state: directory
+        mode: '0755'
+
+    - name: Extract Slurm source tarball to a specific folder structure
+      command: "tar -xaf /tmp/slurm.tar.gz -C /tmp/slurm-source --strip-components=1"
+
+    - name: Build Slurm dependencies
+      shell: |
+        mk-build-deps -i -t "apt-get -y --no-install-recommends" debian/control
+      args:
+        chdir: /tmp/slurm-source
+
+    - name: Build Slurm
+      shell: |
+        debuild -b -uc -us -j$(nproc)
+      args:
+        chdir: /tmp/slurm-source
+
+    - name: Define required Slurm .deb files
+      set_fact:
+        slurm_deb_files:
+          - "slurm-smd_*_amd64.deb"
+          #- "slurm-smd-basic-plugins_*_amd64.deb"
+          #- "slurm-smd-basic-plugins-dev_*_amd64.deb"
+          - "slurm-smd-doc_*_all.deb"
+          - "slurm-smd-slurmctld_*_amd64.deb"
+          - "slurm-smd-slurmdbd_*_amd64.deb"
+          - "slurm-smd-slurmrestd_*_amd64.deb"
+          - "slurm-smd-libpam-slurm-adopt_*_amd64.deb"
+          - "slurm-smd-libslurm-perl_*_amd64.deb"
+          - "slurm-smd-torque_*_all.deb"
+          #- "slurm-smd-libslurm-dev_*_amd64.deb"
+          - "slurm-smd-slurmd_*_amd64.deb"
+          - "slurm-smd-client_*_amd64.deb"
+
+    # This is here to support globbing within the file names.
+    - name: Find required Slurm .deb files
+      find:
+        paths: /tmp/
+        patterns: "{{ item }}"
+      register: found_slurm_deb_files
+      loop: "{{ slurm_deb_files }}"
+
+    - name: Fail if any required Slurm .deb file is missing
+      fail:
+        msg: "The required .deb file {{ item.item }} is missing."
+      when: item.matched == 0
+      loop: "{{ found_slurm_deb_files.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Install required Slurm packages
+      apt:
+        deb: "{{ item }}"
+        state: present
+      loop: "{{ found_slurm_deb_files.results | map(attribute='files') | flatten | map(attribute='path') | list }}"
+
+    - name: Clean up APT cache
+      apt:
+        autoclean: yes
+        clean: yes
+
+    - name: Remove /tmp directory contents
+      file:
+        path: /tmp
+        state: absent
+
+    - name: Recreate /tmp directory
+      file:
+        path: /tmp
+        state: directory
+        mode: '1777'
