@@ -7,6 +7,18 @@
     #slurm_source_url: "https://github.com/SchedMD/slurm/archive/refs/tags/slurm-24-11-0-1.tar.gz"
 
   tasks:
+    - name: Create slurm group
+      ansible.builtin.group:
+        name: slurm
+        gid: 980
+
+    - name: Create slurm user
+      ansible.builtin.user:
+        name: slurm
+        uid: 980
+        group: slurm
+        shell: /bin/bash
+
     - name: Install required packages
       package:
         name:
