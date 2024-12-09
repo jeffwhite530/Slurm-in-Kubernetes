@@ -67,8 +67,14 @@ build {
     ]
   }
 
-  post-processor "docker-tag" {
-    repository = var.image_name
-    tags       = [var.slurm_version_tag]
+  post-processors {
+    post-processor "docker-tag" {
+      repository = var.image_name
+      tags       = [var.slurm_version_tag]
+    }
+
+    post-processor "docker-push" {
+      keep_input_artifact = true
+    }
   }
 }
