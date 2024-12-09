@@ -31,6 +31,8 @@
           - file
           - libswitch-perl
           - munge
+          - netcat-traditional
+          - bsd-mailx
         state: present
 
     - name: Download Slurm source tarball
