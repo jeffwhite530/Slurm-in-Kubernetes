@@ -55,7 +55,7 @@ build {
   }
 
   provisioner "ansible" {
-    playbook_file = "../ansible/build-slurm.yaml"
+    playbook_file = "../ansible/build-slurm-image.yaml"
     user          = "root"
     extra_arguments = [
       "--extra-vars",

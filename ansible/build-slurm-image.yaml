@@ -33,6 +33,9 @@
           - munge
           - netcat-traditional
           - bsd-mailx
+          - sudo
+          - procps
+          - dbus
         state: present
 
     - name: Download Slurm source tarball
@@ -66,8 +69,6 @@
       ansible.builtin.set_fact:
         slurm_deb_files:
           - "slurm-smd_*_amd64.deb"
-          #- "slurm-smd-basic-plugins_*_amd64.deb"
-          #- "slurm-smd-basic-plugins-dev_*_amd64.deb"
           - "slurm-smd-doc_*_all.deb"
           - "slurm-smd-slurmctld_*_amd64.deb"
           - "slurm-smd-slurmdbd_*_amd64.deb"
@@ -75,7 +76,6 @@
           - "slurm-smd-libpam-slurm-adopt_*_amd64.deb"
           - "slurm-smd-libslurm-perl_*_amd64.deb"
           - "slurm-smd-torque_*_all.deb"
-          #- "slurm-smd-libslurm-dev_*_amd64.deb"
           - "slurm-smd-slurmd_*_amd64.deb"
           - "slurm-smd-client_*_amd64.deb"
 
@@ -100,6 +100,14 @@
         deb: "{{ item }}"
         state: present
       loop: "{{ found_slurm_deb_files.results | map(attribute='files') | flatten | map(attribute='path') | list }}"
+
+    - name: Copy entrypoint script
+      ansible.builtin.copy:
+        src: ../scripts/entrypoint.sh
+        dest: /usr/local/bin/entrypoint.sh
+        owner: root
+        group: root
+        mode: '0775'
 
     - name: Clean up APT cache
       ansible.builtin.apt:
