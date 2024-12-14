@@ -69,8 +69,6 @@
       ansible.builtin.set_fact:
         slurm_deb_files:
           - "slurm-smd_*_amd64.deb"
-          #- "slurm-smd-basic-plugins_*_amd64.deb"
-          #- "slurm-smd-basic-plugins-dev_*_amd64.deb"
           - "slurm-smd-doc_*_all.deb"
           - "slurm-smd-slurmctld_*_amd64.deb"
           - "slurm-smd-slurmdbd_*_amd64.deb"
@@ -78,7 +76,6 @@
           - "slurm-smd-libpam-slurm-adopt_*_amd64.deb"
           - "slurm-smd-libslurm-perl_*_amd64.deb"
           - "slurm-smd-torque_*_all.deb"
-          #- "slurm-smd-libslurm-dev_*_amd64.deb"
           - "slurm-smd-slurmd_*_amd64.deb"
           - "slurm-smd-client_*_amd64.deb"
 
