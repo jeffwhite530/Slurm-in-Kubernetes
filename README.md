@@ -16,6 +16,7 @@ This repo contains code to build and deploy a Slurm cluster using containers. It
    - kubectl (and already configured for your Kubernetes cluster)
 
 1. Build the Slurm container image.
+
    ```shell
    cd packer
    packer init build-slurm.pkr.hcl
@@ -23,11 +24,13 @@ This repo contains code to build and deploy a Slurm cluster using containers. It
    ```
 
 1. Create a Kubernetes namespace to deploy Slurm in.
+
    ```shell
    kubectl create namespace slurm-cluster --save-config
    ```
 
 1. Create opaque secrets and update `kubernetes/secrets.yaml`.
+
    ```shell
    echo -n 'P@ssword!' | base64
    ```
@@ -35,6 +38,7 @@ This repo contains code to build and deploy a Slurm cluster using containers. It
 1. Update the PersistentVolume in `kubernetes/slurm-cluster.yaml` to where you want to store your data.
 
 1. Deploy the Kubernetes resources.
+
    ```shell
    cd kubernetes
    kubectl apply -f secrets.yaml
@@ -42,6 +46,7 @@ This repo contains code to build and deploy a Slurm cluster using containers. It
    ```
 
 1. Verify the pods launched.
+
    ```plaintext
    $ kubectl -n slurm-cluster get all
    NAME                             READY   STATUS    RESTARTS   AGE
@@ -69,14 +74,29 @@ This repo contains code to build and deploy a Slurm cluster using containers. It
    ```
 
 1. Check the Slurm cluster status.
+
    1. Exec into the slurmctld container
+
       ```shell
       kubectl -n slurm-cluster exec -it $(kubectl get pod -l app=slurmctld -n slurm-cluster -o jsonpath='{.items[0].metadata.name}') -c slurmctld -- /bin/bash
       ```
 
-   1. List the Slurm nodes
+   1. List the Slurm nodes.
+
+      ```shell
+      kubectl exec -n slurm-cluster -it $(kubectl get pod -l app=slurmctld -n slurm-cluster -o jsonpath='{.items[0].metadata.name}') -c slurmctld -- sinfo
+      ```
+
       ```plaintext
-      root@slurmctld:/# scontrol show nodes
+      PARTITION AVAIL  TIMELIMIT  NODES  STATE NODELIST
+      main*        up   infinite      1   idle slurmd-879764659-nkz29
+      ```
+
+      ```shell
+      kubectl exec -n slurm-cluster -it $(kubectl get pod -l app=slurmctld -n slurm-cluster -o jsonpath='{.items[0].metadata.name}') -c slurmctld -- scontrol show node slurmd-879764659-nkz29
+      ```
+
+      ```plaintext
       NodeName=slurmd-879764659-nkz29 Arch=x86_64 CoresPerSocket=1
          CPUAlloc=0 CPUEfctv=2 CPUTot=2 CPULoad=8.73
          AvailableFeatures=(null)
@@ -95,31 +115,36 @@ This repo contains code to build and deploy a Slurm cluster using containers. It
       ```
 
 1. Launch a test Slurm job.
+
+   1. Copy a job script into a container.
+
+      ```shell
+      kubectl cp scripts/hello-job.sh slurm-cluster/$(kubectl get pod -l app=slurmctld -n slurm-cluster -o jsonpath='{.items[0].metadata.name}'):/tmp/hello-job.sh
+      ```
+
+   1. Submit a job as the slurm user.
+
+      ```shell
+      kubectl exec -n slurm-cluster -it $(kubectl get pod -l app=slurmctld -n slurm-cluster -o jsonpath='{.items[0].metadata.name}') \
+      -c slurmctld -- su - slurm -c "sbatch /tmp/hello-job.sh"
+      ```
+
+   1. Check the job status.
+
+      ```shell
+      kubectl exec -n slurm-cluster -it $(kubectl get pod -l app=slurmctld -n slurm-cluster -o jsonpath='{.items[0].metadata.name}') -c slurmctld -- squeue
+
+      kubectl exec -n slurm-cluster -it $(kubectl get pod -l app=slurmctld -n slurm-cluster -o jsonpath='{.items[0].metadata.name}') -c slurmctld -- sacct --format=JobID,JobName,State,NodeList%25,StdOut,StdErr
+      ```
+
+   1. Check the job's output file. Use the node (container name the job ran in) and log file from sacct above.
+
+      ```shell
+      kubectl exec -n slurm-cluster -it slurmd-879764659-nkz29 -c slurmd -- cat /tmp/job-3.out
+      ```
+
+1. Scale-up the cluster by adding more worker nodes.
+
    ```shell
-   cat <<EOF > scripts/hello-job.sh
-   #!/bin/bash
-   #SBATCH --job-name=hello-job
-   #SBATCH --output=/tmp/job-%j.out
-   #SBATCH --error=/tmp/job-%j.err
-   #SBATCH --ntasks=1
-   #SBATCH --mem=1G
-   #SBATCH --partition=main
-
-   echo "Starting job on $(date)"
-   echo "Running on hostname: $(hostname)"
-   echo "Job ID: $SLURM_JOB_ID"
-   echo "Job name: $SLURM_JOB_NAME"
-   echo "Allocated nodes: $SLURM_JOB_NODELIST"
-   echo "Number of CPUs allocated: $SLURM_CPUS_ON_NODE"
-
-   echo "Hello from $(hostname)!"
-
-   echo "Job completed on $(date)"
-   EOF
-
-   kubectl cp scripts/hello-job.sh slurm-cluster/$(kubectl get pod -l app=slurmctld -n slurm-cluster -o jsonpath='{.items[0].metadata.name}'):/tmp/hello-job.sh
-
-   kubectl exec -it $(kubectl get pod -l app=slurmctld -n slurm-cluster -o jsonpath='{.items[0].metadata.name}') -n slurm-cluster -c slurmctld -- sbatch /tmp/hello-job.sh
-
-   kubectl exec -it $(kubectl get pod -l app=slurmctld -n slurm-cluster -o jsonpath='{.items[0].metadata.name}') -n slurm-cluster -c slurmctld -- squeue
+   kubectl scale deployment slurmd --replicas=5 -n slurm-cluster
    ```
