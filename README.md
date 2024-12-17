@@ -75,12 +75,6 @@ This repo contains code to build and deploy a Slurm cluster using containers. It
 
 1. Check the Slurm cluster status.
 
-   1. Exec into the slurmctld container
-
-      ```shell
-      kubectl -n slurm-cluster exec -it $(kubectl get pod -l app=slurmctld -n slurm-cluster -o jsonpath='{.items[0].metadata.name}') -c slurmctld -- /bin/bash
-      ```
-
    1. List the Slurm nodes.
 
       ```shell
@@ -135,6 +129,16 @@ This repo contains code to build and deploy a Slurm cluster using containers. It
       kubectl exec -n slurm-cluster -it $(kubectl get pod -l app=slurmctld -n slurm-cluster -o jsonpath='{.items[0].metadata.name}') -c slurmctld -- squeue
 
       kubectl exec -n slurm-cluster -it $(kubectl get pod -l app=slurmctld -n slurm-cluster -o jsonpath='{.items[0].metadata.name}') -c slurmctld -- sacct --format=JobID,JobName,State,NodeList%25,StdOut,StdErr
+      ```
+
+      ```plaintext
+      JobID           JobName      State                  NodeList               StdOut               StdErr
+      ------------ ---------- ---------- ------------------------- -------------------- --------------------
+      1             debug-job    PENDING             None assigned      /tmp/job-%j.out      /tmp/job-%j.err
+      2             debug-job  COMPLETED    slurmd-879764659-nkz29      /tmp/job-%j.out      /tmp/job-%j.err
+      2.batch           batch  COMPLETED    slurmd-879764659-nkz29
+      3             debug-job  COMPLETED    slurmd-879764659-nkz29      /tmp/job-%j.out      /tmp/job-%j.err
+      3.batch           batch  COMPLETED    slurmd-879764659-nkz29
       ```
 
    1. Check the job's output file. Use the node (container name the job ran in) and log file from sacct above.
