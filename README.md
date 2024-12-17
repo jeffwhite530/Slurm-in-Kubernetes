@@ -152,3 +152,12 @@ This repo contains code to build and deploy a Slurm cluster using containers. It
    ```shell
    kubectl scale deployment slurmd --replicas=5 -n slurm-cluster
    ```
+
+   ```shell
+   kubectl exec -n slurm-cluster -it $(kubectl get pod -l app=slurmctld -n slurm-cluster -o jsonpath='{.items[0].metadata.name}') -c slurmctld -- sinfo
+   ```
+
+   ```plaintext
+   PARTITION AVAIL  TIMELIMIT  NODES  STATE NODELIST
+   main*        up   infinite      5   idle slurmd-879764659-2cmks,slurmd-879764659-4gvnj,slurmd-879764659-b4q5d,slurmd-879764659-nkz29,slurmd-879764659-qlnh6
+   ```
