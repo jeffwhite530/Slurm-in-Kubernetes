@@ -1,9 +1,10 @@
 
 This repo contains code to build and deploy a Slurm cluster using containers. It includes:
 
+- **HashiCorp Packer Templates**: Building and managing machine and app images
 - **Ansible Playbooks**: Automating system configuration and service deployment
 - **Kubernetes Manifests**: Orchestrating containerized apps
-- **HashiCorp Packer Templates**: Building and managing machine and app images
+- **Helm Charts**: Packaging and deploying Kubernetes applications
 
 ## Setup
 
@@ -14,35 +15,61 @@ This repo contains code to build and deploy a Slurm cluster using containers. It
    - Docker
    - Hashicorp Packer
    - kubectl (and already configured for your Kubernetes cluster)
+   - Helm
 
 1. Build the Slurm container image.
 
    ```shell
    cd packer
+
    packer init build-slurm.pkr.hcl
+
    packer build build-slurm.pkr.hcl
    ```
 
-1. Create a Kubernetes namespace to deploy Slurm in.
+1. Create helm/secrets.yaml and set your database username/pass.
 
-   ```shell
-   kubectl create namespace slurm-cluster --save-config
+   ```plaintext
+   mariadb:
+     secret:
+       username: "slurm"
+       password: "your-actual-password-here"
    ```
 
-1. Create opaque secrets and update `kubernetes/secrets.yaml`.
+1. Edit helm/slurm-cluster/values.yaml with your preferences and validate the helm chart values.
 
    ```shell
-   echo -n 'P@ssword!' | base64
+   cd helm
+
+   helm template slurm-cluster slurm-cluster/ \
+   --namespace slurm-cluster \
+   -f secrets.yaml > rendered-manifests.yaml
    ```
 
-1. Update the PersistentVolume in `kubernetes/slurm-cluster.yaml` to where you want to store your data.
+1. Update helm dependencies.
+
+   ```shell
+   cd helm/slurm-cluster
+   helm dependency update
+   cd ../
+   ```
 
 1. Deploy the Kubernetes resources.
 
    ```shell
-   cd kubernetes
-   kubectl apply -f secrets.yaml
-   kubectl apply -f slurm-cluster.yaml
+   cd helm
+
+   kubectl create namespace slurm-cluster
+
+   helm install slurm-cluster slurm-cluster/ \
+   --namespace slurm-cluster \
+   -f secrets.yaml
+   ```
+
+1. Verify the helm release status
+
+   ```shell
+   helm ls -n slurm-cluster
    ```
 
 1. Verify the pods launched.
@@ -161,3 +188,12 @@ This repo contains code to build and deploy a Slurm cluster using containers. It
    PARTITION AVAIL  TIMELIMIT  NODES  STATE NODELIST
    main*        up   infinite      5   idle slurmd-879764659-2cmks,slurmd-879764659-4gvnj,slurmd-879764659-b4q5d,slurmd-879764659-nkz29,slurmd-879764659-qlnh6
    ```
+
+## Teardown
+
+1. Delete the Kubernetes resources.
+
+```shell
+helm uninstall slurm-cluster -n slurm-cluster
+kubectl delete namespace slurm-cluster
+```

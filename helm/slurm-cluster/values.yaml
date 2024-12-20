@@ -1,0 +1,134 @@
+# MariaDB configuration
+mariadb:
+  deployment:
+    image: mariadb:11.6-ubi
+    databaseName: slurm_accounting
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "2Gi"
+        cpu: "1000m"
+  secret:
+    username: "slurm"
+    password: "${SLURM_DB_PASSWORD}"
+  storage:
+    # Storage for MariaDB data files (mounts to /var/lib/mysql)
+    data:
+      storageClass: local-ssd
+      size: 100Gi
+      localPath: /apps/slurm-cluster/mariadb/data
+      nodeAffinityHostnames:
+        - lavender
+
+# Munge configuration
+munge:
+  storage:
+    # Storage for munge key (mounts to /etc/munge)
+    data:
+      storageClass: local-ssd
+      size: 1Gi
+      localPath: /apps/slurm-cluster/munge/etc
+      nodeAffinityHostnames:
+        - lavender
+
+# Slurm components
+slurmdbdd:
+  deployment:
+    image: docker-registry.jealwh.local:5000/slurm:24-11-0-1
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "2Gi"
+        cpu: "1000m"
+
+slurmctld:
+  deployment:
+    image: docker-registry.jealwh.local:5000/slurm:24-11-0-1
+    resources:
+      requests:
+        memory: "2Gi"
+        cpu: "1000m"
+      limits:
+        memory: "4Gi"
+        cpu: "2000m"
+  storage:
+    # Storage for Slurm state files (mounts to /var/spool/slurmctld)
+    data:
+      storageClass: local-ssd
+      size: 1Gi
+      localPath: /apps/slurm-cluster/slurmctld/spool
+      nodeAffinityHostnames:
+        - lavender
+slurmd:
+  deployment:
+    autoscaling:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 10  # Adjust based on your cluster needs
+      # Scale up when CPU utilization exceeds 70%
+      targetCPUUtilizationPercentage: 70
+      # Scale up when memory utilization exceeds 80%
+      targetMemoryUtilizationPercentage: 80
+    image: docker-registry.jealwh.local:5000/slurm:24-11-0-1
+    replicaCount: 1
+    resources:
+      requests:
+        memory: "4Gi"
+        cpu: "1000m"
+      limits:
+        memory: "4Gi"
+        cpu: "1000m"
+
+# Health checks
+probes:
+  liveness:
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+  readiness:
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+
+# Security settings
+podSecurityContext:
+  runAsUser: 980
+  runAsGroup: 980
+  fsGroup: 980
+
+# Ingress to expose slurmctld
+ingressNginx:
+  enabled: false
+  controller:
+    config:
+      enable-tcp-services: true
+    tcp:
+      configMapNamespace: ingress-nginx
+      configMapName: tcp-services
+
+replicaCount: 1
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+podAnnotations: {}
+podLabels: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+  # Annotations to add to the service account
+  annotations: {}
+  # Whether to automount the service account token
+  automount: true

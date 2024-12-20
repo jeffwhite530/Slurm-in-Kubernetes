@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "slurm-cluster.fullname" . }}-mariadb-pvc
+  labels:
+    {{- include "slurm-cluster.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mariadb
+spec:
+  storageClassName: {{ .Values.mariadb.storage.data.storageClass }}
+  volumeName: {{ include "slurm-cluster.fullname" . }}-mariadb-pv
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.mariadb.storage.data.size }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "slurm-cluster.fullname" . }}-munge-pvc
+  labels:
+    {{- include "slurm-cluster.labels" . | nindent 4 }}
+    app.kubernetes.io/component: munge
+spec:
+  storageClassName: {{ .Values.munge.storage.data.storageClass }}
+  volumeName: {{ include "slurm-cluster.fullname" . }}-munge-pv
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: {{ .Values.munge.storage.data.size }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "slurm-cluster.fullname" . }}-slurmctld-spool-pvc
+  labels:
+    {{- include "slurm-cluster.labels" . | nindent 4 }}
+    app.kubernetes.io/component: slurmctld
+spec:
+  storageClassName: {{ .Values.slurmctld.storage.data.storageClass }}
+  volumeName: {{ include "slurm-cluster.fullname" . }}-slurmctld-spool-pv
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.slurmctld.storage.data.size }}
