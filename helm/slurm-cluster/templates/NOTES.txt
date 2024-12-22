@@ -15,7 +15,10 @@ Your Slurm cluster has been deployed with the following components:
    Note: nginx Ingress Controller was installed as part of this deployment
    {{- end }}
 
-4. Compute Nodes (slurmd):
+4. Slurm node watcher
+   Monitors the Kubernetes event stream to add or remove slurmd nodes from the Slurm controller.
+
+5. Compute Nodes (slurmd):
    Initial replicas: {{ .Values.slurmd.deployment.replicaCount }}
 {{- if .Values.slurmd.deployment.autoscaling.enabled }}
    Autoscaling enabled:
@@ -25,7 +28,7 @@ Your Slurm cluster has been deployed with the following components:
 
 To verify your installation:
 
-1. Check all pods are running:
+1. Check that all pods are running:
    kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }}"
 
 2. View slurmctld logs:
@@ -33,9 +36,10 @@ To verify your installation:
 
 3. Check cluster status (from slurmctld pod):
    kubectl exec --namespace {{ .Release.Namespace }} deploy/{{ include "slurm-cluster.fullname" . }}-slurmctld -- sinfo
-
+{{- if .Values.ingressNginx.enabled }}
 4. Verify TCP access is configured:
    kubectl get configmap -n ingress-nginx tcp-services -o yaml
+{{- end }}
 
 For more information about using Slurm, please refer to:
 https://slurm.schedmd.com/documentation.html

@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD012 MD022 MD031 MD032 MD034 MD041 -->
 
 This repo contains code to build and deploy a Slurm cluster using containers. It includes:
 
@@ -5,6 +6,11 @@ This repo contains code to build and deploy a Slurm cluster using containers. It
 - **Ansible Playbooks**: Automating system configuration and service deployment
 - **Kubernetes Manifests**: Orchestrating containerized apps
 - **Helm Charts**: Packaging and deploying Kubernetes applications
+
+## Features
+
+- Auto-scales slurmd instances as needed using Kubeternes HorizontalPodAutoscaler
+- Debian Bookworm base image
 
 ## Setup
 
@@ -49,9 +55,14 @@ This repo contains code to build and deploy a Slurm cluster using containers. It
 1. Update helm dependencies.
 
    ```shell
+   helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
+   helm repo update
+   ```
+
+   ```shell
    cd helm/slurm-cluster
-   helm dependency update
-   cd ../
+   helm dependency update --namespace slurm-cluster
+   cd ../../
    ```
 
 1. Deploy the Kubernetes resources.
@@ -66,71 +77,279 @@ This repo contains code to build and deploy a Slurm cluster using containers. It
    -f secrets.yaml
    ```
 
-1. Verify the helm release status
+   You should see something like this:
+   ```plaintext
+   NAME: slurm-cluster
+   LAST DEPLOYED: Sat Dec 21 12:30:33 2024
+   NAMESPACE: slurm-cluster
+   STATUS: deployed
+   REVISION: 1
+   TEST SUITE: None
+   NOTES:
+   Thank you for installing slurm-cluster!
+
+   Your Slurm cluster has been deployed with the following components:
+
+   1. MariaDB Database:
+      Service: slurm-cluster-mariadb:3306
+
+   2. Slurm Database Daemon (slurmdbd):
+      Service: slurm-cluster-slurmdbd:6819
+
+   3. Slurm Controller (slurmctld):
+      Service: slurm-cluster-slurmctld:6817
+
+   4. Slurm node watcher
+      Monitors the Kubernetes event stream to add or remove slurmd nodes from the Slurm controller.
+
+   5. Compute Nodes (slurmd):
+      Initial replicas: 1
+      Autoscaling enabled:
+      - Min replicas: 1
+      - Max replicas: 10
+
+   To verify your installation:
+
+   1. Check that all pods are running:
+      kubectl get pods --namespace slurm-cluster -l "app.kubernetes.io/instance=slurm-cluster"
+
+   2. View slurmctld logs:
+      kubectl logs --namespace slurm-cluster -l "app.kubernetes.io/instance=slurm-cluster,app.kubernetes.io/component=slurmctld"
+
+   3. Check cluster status (from slurmctld pod):
+      kubectl exec --namespace slurm-cluster deploy/slurm-cluster-slurmctld -- sinfo
+
+   For more information about using Slurm, please refer to:
+   https://slurm.schedmd.com/documentation.html
+   ```
+
+1. Verify the helm release status.
 
    ```shell
    helm ls -n slurm-cluster
    ```
 
-1. Verify the pods launched.
-
    ```plaintext
-   $ kubectl -n slurm-cluster get all
-   NAME                             READY   STATUS    RESTARTS   AGE
-   pod/mariadb-597dd4cd4b-kjfjx     1/1     Running   0          31h
-   pod/slurmctld-57954475b4-c6dql   1/1     Running   0          16m
-   pod/slurmd-879764659-nkz29       1/1     Running   0          10m
-   pod/slurmdbd-5744d655bd-mbxv8    1/1     Running   0          31h
-
-   NAME                TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
-   service/mariadb     ClusterIP   10.96.248.12    <none>        3306/TCP   31h
-   service/slurmctld   ClusterIP   10.106.97.100   <none>        6817/TCP   31h
-   service/slurmdbd    ClusterIP   10.99.42.161    <none>        6819/TCP   31h
-
-   NAME                        READY   UP-TO-DATE   AVAILABLE   AGE
-   deployment.apps/mariadb     1/1     1            1           31h
-   deployment.apps/slurmctld   1/1     1            1           31h
-   deployment.apps/slurmd      1/1     1            1           31h
-   deployment.apps/slurmdbd    1/1     1            1           31h
-
-   NAME                                   DESIRED   CURRENT   READY   AGE
-   replicaset.apps/mariadb-597dd4cd4b     1         1         1       31h
-   replicaset.apps/slurmctld-57954475b4   1         1         1       16m
-   replicaset.apps/slurmd-879764659       1         1         1       10m
-   replicaset.apps/slurmdbd-5744d655bd    1         1         1       31h
+   NAME            NAMESPACE       REVISION        UPDATED                                 STATUS          CHART              APP VERSION
+   slurm-cluster   slurm-cluster   2               2024-12-22 14:23:07.923440676 -0500 EST deployed        slurm-cluster-0.1.024.11.0.1
    ```
 
+1. Verify the resources launched.
+
+   1. Did the pods start and are they ready?
+
+      ```shell
+      kubectl get pods --namespace slurm-cluster -l "app.kubernetes.io/instance=slurm-cluster"
+      ```
+
+      ```plaintext
+      NAME                                          READY   STATUS    RESTARTS      AGE
+      slurm-cluster-mariadb-0                       1/1     Running   0             13m
+      slurm-cluster-metrics-server-f44b5d76-wqw6l   1/1     Running   0             13m
+      slurm-cluster-node-watcher-0                  1/1     Running   0             13m
+      slurm-cluster-slurmctld-0                     1/1     Running   0             13m
+      slurm-cluster-slurmd-77f8554695-wjmgr         1/1     Running   0             13m
+      slurm-cluster-slurmdbd-0                      1/1     Running   0             13m
+      ```
+
+   1. Did MariaDB launch successfully?
+
+      ```shell
+      kubectl logs --namespace slurm-cluster -l "app.kubernetes.io/instance=slurm-cluster,app.kubernetes.io/component=mariadb" --tail=-1
+      ```
+
+      ```plaintext
+      2024-12-22 19:16:40+00:00 [Note] [Entrypoint]: Entrypoint script for MariaDB Server 11.6.2 started.
+      2024-12-22 19:16:40+00:00 [Note] [Entrypoint]: MariaDB upgrade not required
+      2024-12-22 19:16:40 0 [Note] Starting MariaDB 11.6.2-MariaDB source revision d8dad8c3b54cd09fefce7bc3b9749f427eed9709 server_uid ECAXpVBJpbtJNmAVANHBFmfORe4= as process 1
+      2024-12-22 19:16:40 0 [Note] InnoDB: Compressed tables use zlib 1.2.11
+      2024-12-22 19:16:40 0 [Note] InnoDB: Number of transaction pools: 1
+      2024-12-22 19:16:40 0 [Note] InnoDB: Using crc32 + pclmulqdq instructions
+      2024-12-22 19:16:40 0 [Note] mariadbd: O_TMPFILE is not supported on /tmp (disabling future attempts)
+      2024-12-22 19:16:40 0 [Note] InnoDB: Using liburing
+      2024-12-22 19:16:40 0 [Note] InnoDB: Initializing buffer pool, total size = 4.000GiB, chunk size = 64.000MiB
+      2024-12-22 19:16:40 0 [Note] InnoDB: Completed initialization of buffer pool
+      2024-12-22 19:16:40 0 [Note] InnoDB: File system buffers for log disabled (block size=512 bytes)
+      2024-12-22 19:16:40 0 [Note] InnoDB: End of log at LSN=2547714
+      2024-12-22 19:16:40 0 [Note] InnoDB: Opened 3 undo tablespaces
+      2024-12-22 19:16:40 0 [Note] InnoDB: 128 rollback segments in 3 undo tablespaces are active.
+      2024-12-22 19:16:40 0 [Note] InnoDB: Setting file './ibtmp1' size to 12.000MiB. Physically writing the file full; Please wait ...
+      2024-12-22 19:16:40 0 [Note] InnoDB: File './ibtmp1' size is now 12.000MiB.
+      2024-12-22 19:16:40 0 [Note] InnoDB: log sequence number 2547714; transaction id 5438
+      2024-12-22 19:16:40 0 [Note] Plugin 'FEEDBACK' is disabled.
+      2024-12-22 19:16:40 0 [Note] InnoDB: Loading buffer pool(s) from /var/lib/mysql/ib_buffer_pool
+      2024-12-22 19:16:40 0 [Note] Plugin 'wsrep-provider' is disabled.
+      2024-12-22 19:16:40 0 [Note] InnoDB: Buffer pool(s) load completed at 241222 19:16:40
+      2024-12-22 19:16:41 0 [Note] Server socket created on IP: '0.0.0.0'.
+      2024-12-22 19:16:41 0 [Note] Server socket created on IP: '::'.
+      2024-12-22 19:16:41 0 [Note] mariadbd: Event Scheduler: Loaded 0 events
+      2024-12-22 19:16:41 0 [Note] mariadbd: ready for connections.
+      Version: '11.6.2-MariaDB'  socket: '/run/mariadb/mariadb.sock'  port: 3306  MariaDB Server
+      ```
+
+   1. Did slurmdbd launch successfully?
+
+      ```shell
+      kubectl logs --namespace slurm-cluster -l "app.kubernetes.io/instance=slurm-cluster,app.kubernetes.io/component=slurmdbd" --tail=-1
+      ```
+
+      ```plaintext
+      Defaulted container "slurmdbd" out of: slurmdbd, copy-slurmdbd-conf (init)
+      2024-12-22T19:16:37.290Z Starting entrypoint script
+      2024-12-22T19:16:37.291Z Preparing for munge daemon
+      2024-12-22T19:16:37.301Z Checking for munge key
+      2024-12-22T19:16:37.302Z Munge key already exists at /etc/munge/munge.key
+      2024-12-22T19:16:37.304Z Starting munge daemon
+      2024-12-22T19:16:38.307Z Preparing for slurmdbd daemon
+      2024-12-22T19:16:38.313Z Waiting for mariadb to become available at slurm-cluster-mariadb-0
+      2024-12-22T19:16:39.341Z Attempting to connect to slurm-cluster-mariadb-0:3306...
+      2024-12-22T19:16:45.357Z Attempting to connect to slurm-cluster-mariadb-0:3306...
+      2024-12-22T19:16:51.377Z Attempting to connect to slurm-cluster-mariadb-0:3306...
+      2024-12-22T19:16:57.389Z Attempting to connect to slurm-cluster-mariadb-0:3306...
+      2024-12-22T19:17:03.409Z Attempting to connect to slurm-cluster-mariadb-0:3306...
+      2024-12-22T19:17:09.425Z Attempting to connect to slurm-cluster-mariadb-0:3306...
+      2024-12-22T19:17:14.430Z mariadb is up at slurm-cluster-mariadb-0 - proceeding with startup
+      2024-12-22T19:17:14.431Z Starting slurmdbd daemon
+      slurmdbd: accounting_storage/as_mysql: _check_mysql_concat_is_sane: MySQL server version is: 11.6.2-MariaDB
+      slurmdbd: accounting_storage/as_mysql: init: Accounting storage MYSQL plugin loaded
+      slurmdbd: slurmdbd version 24.11.0 started
+      ```
+
+   1. Did slurmctld start successfully?
+
+      ```shell
+      kubectl logs --namespace slurm-cluster -l "app.kubernetes.io/instance=slurm-cluster,app.kubernetes.io/component=slurmctld" --tail=-1
+      ```
+
+      ```plaintext
+      2024-12-22T19:16:43.399Z Starting entrypoint script
+      2024-12-22T19:16:43.400Z Preparing for munge daemon
+      2024-12-22T19:16:43.410Z Checking for munge key
+      2024-12-22T19:16:43.412Z Munge key already exists at /etc/munge/munge.key
+      2024-12-22T19:16:43.413Z Starting munge daemon
+      2024-12-22T19:16:44.416Z Preparing for slurmctld daemon
+      2024-12-22T19:16:44.421Z Waiting for slurmdbd to become available at slurm-cluster-slurmdbd-0
+      2024-12-22T19:16:45.453Z Attempting to connect to slurm-cluster-slurmdbd-0:6819...
+      2024-12-22T19:16:51.469Z Attempting to connect to slurm-cluster-slurmdbd-0:6819...
+      2024-12-22T19:17:26.555Z slurmdbd is up at slurm-cluster-slurmdbd-0 - proceeding with startup
+      2024-12-22T19:17:26.556Z Starting slurmctld daemon
+      slurmctld: slurmctld version 24.11.0 started on cluster slurm-cluster(2175)
+      slurmctld: cred/munge: init: Munge credential signature plugin loaded
+      slurmctld: select/linear: init: Linear node selection plugin loaded with argument 20
+      slurmctld: select/cons_tres: init: select/cons_tres loaded
+      slurmctld: accounting_storage/slurmdbd: init: Accounting storage SLURMDBD plugin loaded
+      slurmctld: accounting_storage/slurmdbd: _load_dbd_state: recovered 0 pending RPCs
+      slurmctld: accounting_storage/slurmdbd: clusteracct_storage_p_register_ctld: Registering slurmctld at port 6817 with slurmdbd
+      slurmctld: _read_slurm_cgroup_conf: No cgroup.conf file (/etc/slurm/cgroup.conf), using defaults
+      slurmctld: No memory enforcing mechanism configured.
+      slurmctld: topology/default: init: topology Default plugin loaded
+      slurmctld: sched: Backfill scheduler plugin loaded
+      slurmctld: Recovered state of 1 nodes
+      slurmctld: Recovered information about 0 jobs
+      slurmctld: select/cons_tres: part_data_create_array: select/cons_tres: preparing for 1 partitions
+      slurmctld: Recovered state of 0 reservations
+      slurmctld: State of 0 triggers recovered
+      slurmctld: read_slurm_conf: backup_controller not specified
+      slurmctld: select/cons_tres: select_p_reconfigure: select/cons_tres: reconfigure
+      slurmctld: select/cons_tres: part_data_create_array: select/cons_tres: preparing for 1 partitions
+      slurmctld: Running as primary controller
+      ```
+
+   1. Did a slurmd instance start successfully?
+
+      ```shell
+      kubectl logs --namespace slurm-cluster -l "app.kubernetes.io/instance=slurm-cluster,app.kubernetes.io/component=slurmd" --tail=-1
+      ```
+
+      ```plaintext
+      2024-12-22T19:18:02.574Z Starting entrypoint script
+      2024-12-22T19:18:02.575Z Preparing for munge daemon
+      2024-12-22T19:18:02.585Z Checking for munge key
+      2024-12-22T19:18:02.586Z Munge key already exists at /etc/munge/munge.key
+      2024-12-22T19:18:02.588Z Starting munge daemon
+      2024-12-22T19:18:03.591Z Preparing for slurmd daemon
+      2024-12-22T19:18:03.596Z Waiting for slurmctld to become available at slurm-cluster-slurmctld-0
+      2024-12-22T19:18:03.599Z slurmctld is up at slurm-cluster-slurmctld-0 - proceeding with startup
+      2024-12-22T19:18:03.606Z Getting memory amount from cgroups v2
+      4096
+      2024-12-22T19:18:03.609Z Starting slurmd daemon
+      slurmd: warning: Running with local config file despite slurmctld having been setup for configless operation
+      slurmd: slurmd version 24.11.0 started
+      slurmd: slurmd started on Sun, 22 Dec 2024 19:18:03 +0000
+      slurmd: CPUs=1 Boards=1 Sockets=1 Cores=1 Threads=1 Memory=128717 TmpDisk=180686 Uptime=80365 CPUSpecList=(null) FeaturesAvail=(null) FeaturesActive=(null)
+      ```
+
+   1. Did the node watcher start successfully?
+
+      ```shell
+      kubectl logs --namespace slurm-cluster -l "app.kubernetes.io/instance=slurm-cluster,app.kubernetes.io/component=node-watcher" --tail=-1
+      ```
+
+      ```plaintext
+      2024-12-22T19:16:34.778Z Starting entrypoint script
+      2024-12-22T19:16:34.779Z Preparing for munge daemon
+      2024-12-22T19:16:34.789Z Checking for munge key
+      2024-12-22T19:16:34.790Z Munge key already exists at /etc/munge/munge.key
+      2024-12-22T19:16:34.792Z Starting munge daemon
+      2024-12-22T19:16:35.873Z Preparing for slurm-node-watcher daemon
+      2024-12-22T19:16:35.876Z Waiting for slurmctld to become available at slurm-cluster-slurmctld-0
+      2024-12-22T19:16:36.909Z Attempting to connect to slurm-cluster-slurmctld-0:6817...
+      2024-12-22T19:16:42.925Z Attempting to connect to slurm-cluster-slurmctld-0:6817...
+      2024-12-22T19:17:36.059Z slurmctld is up at slurm-cluster-slurmctld-0 - proceeding with startup
+      2024-12-22T19:17:36.061Z Starting slurm-node-watcher daemon
+      2024-12-22 19:17:37,483 - INFO - Starting Slurm node controller
+      2024-12-22 19:17:37,484 - INFO - Performing initial sync...
+      2024-12-22 19:17:37,598 - INFO - Removed node slurm-cluster-slurmd-77f8554695-p7s2h
+      2024-12-22 19:17:37,598 - INFO - Initial sync complete
+      2024-12-22 19:17:37,598 - INFO - Starting to watch for pod events...
+      ```
+
+   1. Is the HorizontalPodAutoscaler for the slurmd nodes reporting correctly?
+
+      ```shell
+      kubectl get hpa --namespace slurm-cluster -l "app.kubernetes.io/instance=slurm-cluster"
+      ```
+
+      ```plaintext
+      NAME                   REFERENCE                         TARGETS          MINPODS   MAXPODS   REPLICAS   AGE
+      slurm-cluster-slurmd   Deployment/slurm-cluster-slurmd   0%/80%, 0%/70%   1         10        1          9m38s
+      ```
+
 1. Check the Slurm cluster status.
+
+   1. List the partitions.
+
+      ```shell
+      kubectl exec --namespace slurm-cluster -it slurm-cluster-slurmctld-0 -- sinfo
+      ```
+
+      ```plaintext
+      Defaulted container "slurmctld" out of: slurmctld, copy-slurmdbd-conf (init), copy-slurm-conf (init)
+      PARTITION AVAIL  TIMELIMIT  NODES  STATE NODELIST
+      main*        up   infinite      1   idle slurm-cluster-slurmd-77f8554695-wjmgr
+      ```
 
    1. List the Slurm nodes.
 
       ```shell
-      kubectl exec -n slurm-cluster -it $(kubectl get pod -l app=slurmctld -n slurm-cluster -o jsonpath='{.items[0].metadata.name}') -c slurmctld -- sinfo
+      kubectl exec --namespace slurm-cluster -it slurm-cluster-slurmctld-0 -- scontrol show nodes
       ```
 
       ```plaintext
-      PARTITION AVAIL  TIMELIMIT  NODES  STATE NODELIST
-      main*        up   infinite      1   idle slurmd-879764659-nkz29
-      ```
-
-      ```shell
-      kubectl exec -n slurm-cluster -it $(kubectl get pod -l app=slurmctld -n slurm-cluster -o jsonpath='{.items[0].metadata.name}') -c slurmctld -- scontrol show node slurmd-879764659-nkz29
-      ```
-
-      ```plaintext
-      NodeName=slurmd-879764659-nkz29 Arch=x86_64 CoresPerSocket=1
-         CPUAlloc=0 CPUEfctv=2 CPUTot=2 CPULoad=8.73
+      Defaulted container "slurmctld" out of: slurmctld, copy-slurmdbd-conf (init), copy-slurm-conf (init)
+      NodeName=slurm-cluster-slurmd-77f8554695-wjmgr Arch=x86_64 CoresPerSocket=1
+         CPUAlloc=0 CPUEfctv=1 CPUTot=1 CPULoad=1.49
          AvailableFeatures=(null)
          ActiveFeatures=(null)
          Gres=(null)
-         NodeAddr=10.10.1.238 NodeHostName=slurmd-879764659-nkz29 Version=24.11.0
-         OS=Linux 6.1.0-26-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.1.112-1 (2024-09-30)
-         RealMemory=4096 AllocMem=0 FreeMem=53921 Sockets=2 Boards=1
+         NodeAddr=10.10.1.231 NodeHostName=slurm-cluster-slurmd-77f8554695-wjmgr Version=24.11.0
+         OS=Linux 6.1.0-28-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.1.119-1 (2024-11-22)
+         RealMemory=4096 AllocMem=0 FreeMem=51734 Sockets=1 Boards=1
          State=IDLE+DYNAMIC_NORM ThreadsPerCore=1 TmpDisk=0 Weight=1 Owner=N/A MCS_label=N/A
          Partitions=main
-         BootTime=2024-11-29T13:04:40 SlurmdStartTime=2024-12-13T00:36:06
-         LastBusyTime=2024-12-13T00:36:06 ResumeAfterTime=None
-         CfgTRES=cpu=2,mem=4G,billing=2
+         BootTime=2024-12-21T20:58:39 SlurmdStartTime=2024-12-22T19:18:03
+         LastBusyTime=2024-12-22T19:17:37 ResumeAfterTime=None
+         CfgTRES=cpu=1,mem=4G,billing=1
          AllocTRES=
          CurrentWatts=0 AveWatts=0
       ```

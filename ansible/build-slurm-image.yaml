@@ -36,6 +36,11 @@
           - sudo
           - procps
           - dbus
+          - pip
+          - python3-kubernetes
+          - vim
+          - dnsutils
+          - iproute2
         state: present
 
     - name: Download Slurm source tarball
@@ -107,6 +112,14 @@
         dest: /usr/local/bin/entrypoint.sh
         owner: root
         group: root
+        mode: '0775'
+
+    - name: Copy slurm-node-watcher script
+      ansible.builtin.copy:
+        src: ../scripts/slurm-node-watcher.py
+        dest: /usr/local/bin/slurm-node-watcher.py
+        owner: slurm
+        group: slurm
         mode: '0775'
 
     - name: Clean up APT cache

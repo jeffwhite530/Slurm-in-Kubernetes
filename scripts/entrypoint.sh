@@ -121,7 +121,7 @@ launch_slurmdbd() {
     log "Attempting to connect to ${storagehost_addr}:3306..."
     sleep 5
   done
-  log "mariadb is up at ${storagehost_addr} - proceeding with startup" 
+  log "mariadb is up at ${storagehost_addr} - proceeding with startup"
 
   log "Starting slurmdbd daemon"
   exec /usr/sbin/slurmdbd -D -v
@@ -149,7 +149,7 @@ launch_slurmctld() {
     log "Attempting to connect to ${slurmdbd_addr}:6819..."
     sleep 5
   done
-  log "slurmdbd is up at ${slurmdbd_addr} - proceeding with startup" 
+  log "slurmdbd is up at ${slurmdbd_addr} - proceeding with startup"
 
   log "Starting slurmctld daemon"
   exec /usr/sbin/slurmctld -D -v
@@ -177,7 +177,7 @@ launch_slurmd() {
     log "Attempting to connect to ${slurmctld_addr}:6817..."
     sleep 5
   done
-  log "slurmctld is up at ${slurmctld_addr} - proceeding with startup"  
+  log "slurmctld is up at ${slurmctld_addr} - proceeding with startup"
 
   dbus-daemon --system --fork --nopidfile
 
@@ -208,6 +208,29 @@ EOF
 }
 
 
+launch_slurm-node-watcher() {
+  log "Preparing for slurm-node-watcher daemon"
+
+  # Extract SlurmctldHost from slurm.conf
+  slurmctld_addr=$(grep -oP '^SlurmctldHost=\K.*' /etc/slurm/slurm.conf)
+
+  if [ -z "${slurmctld_addr}" ]; then
+    log "Error: Could not find SlurmctldHost in /etc/slurm/slurm.conf"
+    exit 1
+  fi
+
+  log "Waiting for slurmctld to become available at ${slurmctld_addr}"
+  until nc -z "${slurmctld_addr}" 6817; do
+    log "Attempting to connect to ${slurmctld_addr}:6817..."
+    sleep 5
+  done
+  log "slurmctld is up at ${slurmctld_addr} - proceeding with startup"
+
+  log "Starting slurm-node-watcher daemon"
+  exec /usr/bin/python3 /usr/local/bin/slurm-node-watcher.py
+}
+
+
 # Main script execution
 log "Starting entrypoint script"
 
@@ -226,8 +249,12 @@ case "${1:-}" in
     launch_munged
     launch_slurmd
     ;;
+  "launch_slurm-node-watcher")
+    launch_munged
+    launch_slurm-node-watcher
+    ;;
   *)
-    log "Usage: $0 {launch_slurmdbd|launch_slurmctld|launch_slurmd}"
+    log "Usage: $0 {launch_slurmdbd|launch_slurmctld|launch_slurmd|launch_slurm-node-watcher}"
     exit 1
     ;;
 esac

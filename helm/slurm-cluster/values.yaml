@@ -44,7 +44,6 @@ slurmdbdd:
       limits:
         memory: "2Gi"
         cpu: "1000m"
-
 slurmctld:
   deployment:
     image: docker-registry.jealwh.local:5000/slurm:24-11-0-1
@@ -82,6 +81,17 @@ slurmd:
       limits:
         memory: "4Gi"
         cpu: "1000m"
+
+# The Slurm node controller (adds and removes slurmd nodes via scrontrol)
+nodeController:
+  deployment:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
 
 # Health checks
 probes:

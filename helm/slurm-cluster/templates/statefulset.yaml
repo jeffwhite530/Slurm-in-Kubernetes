@@ -285,3 +285,62 @@ spec:
         resources:
           requests:
             storage: {{ .Values.slurmctld.storage.data.size }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "slurm-cluster.fullname" . }}-node-watcher
+  labels:
+    {{- include "slurm-cluster.labels" . | nindent 4 }}
+    app.kubernetes.io/component: node-watcher
+spec:
+  serviceName: {{ include "slurm-cluster.fullname" . }}-node-watcher
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "slurm-cluster.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: node-watcher
+  template:
+    metadata:
+      labels:
+        {{- include "slurm-cluster.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: node-watcher
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      serviceAccountName: {{ include "slurm-cluster.fullname" . }}-node-watcher
+      containers:
+        - name: node-watcher
+          image: {{ .Values.slurmd.deployment.image }}
+          imagePullPolicy: Always
+          resources:
+            {{- toYaml .Values.nodeController.deployment.resources | nindent 12 }}
+          command: ["/bin/bash"]
+          args:
+            - /usr/local/bin/entrypoint.sh
+            - launch_slurm-node-watcher
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          volumeMounts:
+            - name: etc-slurm-dir
+              mountPath: /etc/slurm
+            - name: etc-munge-dir
+              mountPath: /etc/munge
+          livenessProbe:
+            exec:
+              command: ["pgrep", "-f", "slurm-node-watcher.py"]
+            {{- toYaml .Values.probes.liveness | nindent 12 }}
+          readinessProbe:
+            exec:
+              command: ["pgrep", "-f", "slurm-node-watcher.py"]
+            {{- toYaml .Values.probes.readiness | nindent 12 }}
+      volumes:
+        - name: etc-slurm-dir
+          configMap:
+            name: {{ include "slurm-cluster.fullname" . }}-slurm-config
+        - name: etc-munge-dir
+          persistentVolumeClaim:
+            claimName: {{ include "slurm-cluster.fullname" . }}-munge-pvc
