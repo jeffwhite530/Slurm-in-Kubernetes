@@ -1,0 +1,287 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "slurm-cluster.fullname" . }}-mariadb
+  labels:
+    {{- include "slurm-cluster.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mariadb
+spec:
+  serviceName: {{ include "slurm-cluster.fullname" . }}-mariadb
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "slurm-cluster.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: mariadb
+  template:
+    metadata:
+      labels:
+        {{- include "slurm-cluster.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: mariadb
+    spec:
+      subdomain: {{ include "slurm-cluster.fullname" . }}-mariadb
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: mariadb
+          image: {{ .Values.mariadb.deployment.image }}
+          resources:
+            {{- toYaml .Values.mariadb.deployment.resources | nindent 12 }}
+          env:
+            - name: MARIADB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "slurm-cluster.fullname" . }}-mariadb-root
+                  key: password
+            - name: MARIADB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "slurm-cluster.fullname" . }}-mariadb-root
+                  key: username
+            - name: MARIADB_DATABASE
+              value: {{ .Values.mariadb.deployment.databaseName }}
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: mariadb-data
+              mountPath: /var/lib/mysql
+            - name: mariadb-config
+              mountPath: /etc/mysql/conf.d
+          livenessProbe:
+            tcpSocket:
+              port: 3306
+            {{- toYaml .Values.probes.liveness | nindent 12 }}
+          readinessProbe:
+            tcpSocket:
+              port: 3306
+            {{- toYaml .Values.probes.readiness | nindent 12 }}
+      volumes:
+        - name: mariadb-config
+          configMap:
+            name: {{ include "slurm-cluster.fullname" . }}-mariadb-config
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: mariadb-data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        storageClassName: {{ .Values.mariadb.storage.data.storageClass | quote }}
+        resources:
+          requests:
+            storage: {{ .Values.mariadb.storage.data.size | quote }}
+        volumeMode: Filesystem
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "slurm-cluster.fullname" . }}-slurmdbd
+  labels:
+    {{- include "slurm-cluster.labels" . | nindent 4 }}
+    app.kubernetes.io/component: slurmdbd
+spec:
+  serviceName: {{ include "slurm-cluster.fullname" . }}-slurmdbd
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "slurm-cluster.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: slurmdbd
+  template:
+    metadata:
+      labels:
+        {{- include "slurm-cluster.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: slurmdbd
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: copy-slurmdbd-conf
+          image: {{ .Values.slurmdbdd.deployment.image }}
+          imagePullPolicy: Always
+          resources:
+            {{- toYaml .Values.slurmdbdd.deployment.resources | nindent 12 }}
+          command: ["/bin/bash"]
+          args:
+            - -c
+            - |
+              mkdir -p /etc/slurm && \
+              cp /slurmdbdconf-configmap/slurmdbd.conf /etc/slurm/slurmdbd.conf && \
+              sed -i "s/STORAGE_PASS/${STORAGE_PASS}/g" /etc/slurm/slurmdbd.conf && \
+              sed -i "s/STORAGE_USER/${STORAGE_USER}/g" /etc/slurm/slurmdbd.conf      
+          volumeMounts:
+            - name: slurmdbdconf-configmap-volume
+              mountPath: /slurmdbdconf-configmap
+            - name: etc-slurm-dir
+              mountPath: /etc/slurm
+          env:
+            - name: STORAGE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "slurm-cluster.fullname" . }}-mariadb-root
+                  key: username
+            - name: STORAGE_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "slurm-cluster.fullname" . }}-mariadb-root
+                  key: password
+      containers:
+        - name: slurmdbd
+          image: {{ .Values.slurmdbdd.deployment.image }}
+          imagePullPolicy: Always
+          resources:
+            {{- toYaml .Values.slurmdbdd.deployment.resources | nindent 12 }}
+          command: ["/bin/bash"]
+          args:
+            - /usr/local/bin/entrypoint.sh 
+            - launch_slurmdbd
+          volumeMounts:
+            - name: etc-slurm-dir
+              mountPath: /etc/slurm
+            - name: etc-munge-dir
+              mountPath: /etc/munge
+          ports:
+            - containerPort: 6819
+          livenessProbe:
+            tcpSocket:
+              port: 6819
+            {{- toYaml .Values.probes.liveness | nindent 12 }}
+          readinessProbe:
+            tcpSocket:
+              port: 6819
+            {{- toYaml .Values.probes.readiness | nindent 12 }}
+      volumes:
+        - name: slurmdbdconf-configmap-volume
+          configMap:
+            name: {{ include "slurm-cluster.fullname" . }}-slurmdbd-config
+        - name: etc-slurm-dir
+          emptyDir: {}
+        - name: etc-munge-dir
+          persistentVolumeClaim:
+            claimName: {{ include "slurm-cluster.fullname" . }}-munge-pvc
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "slurm-cluster.fullname" . }}-slurmctld
+  labels:
+    {{- include "slurm-cluster.labels" . | nindent 4 }}
+    app.kubernetes.io/component: slurmctld
+spec:
+  serviceName: {{ include "slurm-cluster.fullname" . }}-slurmctld
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "slurm-cluster.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: slurmctld
+  template:
+    metadata:
+      labels:
+        {{- include "slurm-cluster.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: slurmctld
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: copy-slurmdbd-conf
+          image: {{ .Values.slurmdbdd.deployment.image }}
+          imagePullPolicy: Always
+          resources:
+            {{- toYaml .Values.slurmdbdd.deployment.resources | nindent 12 }}
+          command: ["/bin/bash"]
+          args:
+            - -c
+            - |
+              mkdir -p /etc/slurm && \
+              cp /slurmdbdconf-configmap/slurmdbd.conf /etc/slurm/slurmdbd.conf && \
+              sed -i "s/STORAGE_PASS/${STORAGE_PASS}/g" /etc/slurm/slurmdbd.conf && \
+              sed -i "s/STORAGE_USER/${STORAGE_USER}/g" /etc/slurm/slurmdbd.conf      
+          volumeMounts:
+            - name: slurmdbdconf-configmap-volume
+              mountPath: /slurmdbdconf-configmap
+            - name: etc-slurm-dir
+              mountPath: /etc/slurm
+          env:
+            - name: STORAGE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "slurm-cluster.fullname" . }}-mariadb-root
+                  key: username
+            - name: STORAGE_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "slurm-cluster.fullname" . }}-mariadb-root
+                  key: password
+        - name: copy-slurm-conf
+          image: {{ .Values.slurmctld.deployment.image }}
+          imagePullPolicy: Always
+          resources:
+            {{- toYaml .Values.slurmctld.deployment.resources | nindent 12 }}
+          command: ["/bin/bash"]
+          args:
+            - -c
+            - |
+              cp /slurmconf-configmap/slurm.conf /etc/slurm/slurm.conf
+          volumeMounts:
+            - name: slurmconf-configmap-volume
+              mountPath: /slurmconf-configmap
+            - name: etc-slurm-dir
+              mountPath: /etc/slurm
+      containers:
+        - name: slurmctld
+          image: {{ .Values.slurmctld.deployment.image }}
+          imagePullPolicy: Always
+          resources:
+            {{- toYaml .Values.slurmctld.deployment.resources | nindent 12 }}
+          command: ["/bin/bash"]
+          args:
+            - /usr/local/bin/entrypoint.sh
+            - launch_slurmctld
+          volumeMounts:
+            - name: etc-slurm-dir
+              mountPath: /etc/slurm
+            - name: etc-munge-dir
+              mountPath: /etc/munge
+            - name: slurmctld-spool
+              mountPath: /var/spool/slurmctld
+          livenessProbe:
+            tcpSocket:
+              port: 6817
+            {{- toYaml .Values.probes.liveness | nindent 12 }}
+          readinessProbe:
+            tcpSocket:
+              port: 6817
+            {{- toYaml .Values.probes.readiness | nindent 12 }}
+      volumes:
+        - name: slurmdbdconf-configmap-volume
+          configMap:
+            name: {{ include "slurm-cluster.fullname" . }}-slurmdbd-config
+        - name: slurmconf-configmap-volume
+          configMap:
+            name: {{ include "slurm-cluster.fullname" . }}-slurm-config
+        - name: etc-slurm-dir
+          emptyDir: {}
+        - name: etc-munge-dir
+          persistentVolumeClaim:
+            claimName: {{ include "slurm-cluster.fullname" . }}-munge-pvc
+  volumeClaimTemplates:
+    - metadata:
+        name: slurmctld-spool
+        labels:
+          {{- include "slurm-cluster.labels" . | nindent 10 }}
+          app.kubernetes.io/component: slurmctld
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: {{ .Values.slurmctld.storage.data.storageClass }}
+        resources:
+          requests:
+            storage: {{ .Values.slurmctld.storage.data.size }}

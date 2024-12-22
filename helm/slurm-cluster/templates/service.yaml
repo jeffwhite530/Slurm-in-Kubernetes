@@ -1,14 +1,13 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: mariadb
+  name: {{ include "slurm-cluster.fullname" . }}-mariadb-0
   labels:
     {{- include "slurm-cluster.labels" . | nindent 4 }}
     app.kubernetes.io/component: mariadb
 spec:
   selector:
-    {{- include "slurm-cluster.selectorLabels" . | nindent 4 }}
-    app.kubernetes.io/component: mariadb
+    statefulset.kubernetes.io/pod-name: {{ include "slurm-cluster.fullname" . }}-mariadb-0
   ports:
     - protocol: TCP
       port: 3306
@@ -17,14 +16,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: slurmdbd
+  name: {{ include "slurm-cluster.fullname" . }}-slurmdbd-0
   labels:
     {{- include "slurm-cluster.labels" . | nindent 4 }}
     app.kubernetes.io/component: slurmdbd
 spec:
   selector:
-    {{- include "slurm-cluster.selectorLabels" . | nindent 4 }}
-    app.kubernetes.io/component: slurmdbd
+    statefulset.kubernetes.io/pod-name: {{ include "slurm-cluster.fullname" . }}-slurmdbd-0
   ports:
     - protocol: TCP
       port: 6819
@@ -33,15 +31,15 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: slurmctld
+  name: {{ include "slurm-cluster.fullname" . }}-slurmctld-0
   labels:
     {{- include "slurm-cluster.labels" . | nindent 4 }}
     app.kubernetes.io/component: slurmctld
 spec:
   selector:
-    {{- include "slurm-cluster.selectorLabels" . | nindent 4 }}
-    app.kubernetes.io/component: slurmctld
+    statefulset.kubernetes.io/pod-name: {{ include "slurm-cluster.fullname" . }}-slurmctld-0
   ports:
     - protocol: TCP
       port: 6817
       targetPort: 6817
+      name: slurmctld

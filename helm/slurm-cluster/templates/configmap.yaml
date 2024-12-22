@@ -51,7 +51,7 @@ data:
     LogFile=/home/slurm/log/slurmdbd.log
     PidFile=/home/slurm/run/slurmdbd.pid
     SlurmUser={{ .Values.podSecurityContext.runAsUser }}
-    StorageHost=mariadb.{{ .Release.Namespace }}.svc.cluster.local
+    StorageHost={{ include "slurm-cluster.fullname" . }}-mariadb-0
     StoragePass=STORAGE_PASS
     StorageType=accounting_storage/mysql
     StorageUser=STORAGE_USER
@@ -68,7 +68,7 @@ data:
     AuthInfo=socket=/home/slurm/munge/run/munge.socket.2
     AuthType=auth/munge
     ClusterName={{ include "slurm-cluster.fullname" . }}
-    SlurmctldHost=slurmctld
+    SlurmctldHost={{ include "slurm-cluster.fullname" . }}-slurmctld-0
     MpiDefault=none
     #ProctrackType=proctrack/cgroup
     ProctrackType=proctrack/linuxproc
@@ -98,7 +98,7 @@ data:
     SelectTypeParameters=CR_Core_Memory
     
     # LOGGING AND ACCOUNTING
-    AccountingStorageHost=slurmdbd
+    AccountingStorageHost={{ include "slurm-cluster.fullname" . }}-slurmdbd-0
     AccountingStorageType=accounting_storage/slurmdbd
     AccountingStoragePass=socket=/home/slurm/munge/run/munge.socket.2
     JobCompType=jobcomp/none

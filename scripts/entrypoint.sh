@@ -108,12 +108,20 @@ launch_slurmdbd() {
   
   touch /home/slurm/log/slurmdbd.log
 
-  log "Waiting for mariadb to become available"
-  until nc -z mariadb 3306; do
+  # Extract StorageHost from slurmdbd.conf
+  storagehost_addr=$(grep -oP '^StorageHost=\K.*' /etc/slurm/slurmdbd.conf)
+
+  if [ -z "${storagehost_addr}" ]; then
+    log "Error: Could not find StorageHost in /etc/slurm/slurmdbd.conf"
+    exit 1
+  fi
+
+  log "Waiting for mariadb to become available at ${storagehost_addr}"
+  until nc -z "${storagehost_addr}" 3306; do
+    log "Attempting to connect to ${storagehost_addr}:3306..."
     sleep 5
   done
-
-  log "mariadb is up - proceeding with startup"
+  log "mariadb is up at ${storagehost_addr} - proceeding with startup" 
 
   log "Starting slurmdbd daemon"
   exec /usr/sbin/slurmdbd -D -v
@@ -128,12 +136,20 @@ launch_slurmctld() {
 
   touch /home/slurm/log/slurmctld.log
 
-  log "Waiting for slurmdbd to become available"
-  until nc -z slurmdbd 6819; do
+  # Extract AccountingStorageHost from slurm.conf
+  slurmdbd_addr=$(grep -oP '^AccountingStorageHost=\K.*' /etc/slurm/slurm.conf)
+
+  if [ -z "${slurmdbd_addr}" ]; then
+    log "Error: Could not find AccountingStorageHost in /etc/slurm/slurm.conf"
+    exit 1
+  fi
+
+  log "Waiting for slurmdbd to become available at ${slurmdbd_addr}"
+  until nc -z "${slurmdbd_addr}" 6819; do
+    log "Attempting to connect to ${slurmdbd_addr}:6819..."
     sleep 5
   done
-
-  log "slurmdbd is up - proceeding with startup"
+  log "slurmdbd is up at ${slurmdbd_addr} - proceeding with startup" 
 
   log "Starting slurmctld daemon"
   exec /usr/sbin/slurmctld -D -v
@@ -148,12 +164,20 @@ launch_slurmd() {
 
   touch /home/slurm/log/slurmd.log
 
-  log "Waiting for slurmctld to become available"
-  until nc -z slurmctld 6817; do
+  # Extract SlurmctldHost from slurm.conf
+  slurmctld_addr=$(grep -oP '^SlurmctldHost=\K.*' /etc/slurm/slurm.conf)
+
+  if [ -z "${slurmctld_addr}" ]; then
+    log "Error: Could not find SlurmctldHost in /etc/slurm/slurm.conf"
+    exit 1
+  fi
+
+  log "Waiting for slurmctld to become available at ${slurmctld_addr}"
+  until nc -z "${slurmctld_addr}" 6817; do
+    log "Attempting to connect to ${slurmctld_addr}:6817..."
     sleep 5
   done
-
-  log "slurmctld is up - proceeding with startup"   
+  log "slurmctld is up at ${slurmctld_addr} - proceeding with startup"  
 
   dbus-daemon --system --fork --nopidfile
 
