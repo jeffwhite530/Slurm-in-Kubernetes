@@ -69,6 +69,7 @@ data:
     AuthType=auth/munge
     ClusterName={{ include "slurm-cluster.fullname" . }}
     SlurmctldHost={{ include "slurm-cluster.fullname" . }}-slurmctld-0
+    SlurmctldAddr={{ include "slurm-cluster.fullname" . }}-slurmctld-0.slurm-cluster.svc.cluster.local
     MpiDefault=none
     #ProctrackType=proctrack/cgroup
     ProctrackType=proctrack/linuxproc
