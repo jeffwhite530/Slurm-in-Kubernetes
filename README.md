@@ -1,27 +1,33 @@
 <!-- markdownlint-disable MD012 MD022 MD031 MD032 MD034 MD041 -->
 
-This repo contains code to build and deploy a Slurm cluster using containers. It includes:
-
-- **HashiCorp Packer Templates**: Building and managing machine and app images
-- **Ansible Playbooks**: Automating system configuration and service deployment
-- **Kubernetes Manifests**: Orchestrating containerized apps
-- **Helm Charts**: Packaging and deploying Kubernetes applications
+This project provides a containerized Slurm cluster solution running on Kubernetes.
 
 ## Features
 
-- Auto-scales slurmd instances as needed using Kubeternes HorizontalPodAutoscaler
-- Debian Bookworm base image
+- **Automatic Installation**: Automated deployment of Slurm's components and worker nodes (pods)
+- **Database Integration**: Preconfigured MariaDB backend for job accounting and reporting
+- **Dynamic Autoscaling**: Automatically scales compute nodes based on workload using Kubernetes HorizontalPodAutoscaler
+- **Common Foundation**: Built with [Debian](https://hub.docker.com/_/debian) and [Slurm](https://github.com/SchedMD/slurm)
 
-## Setup
+## Components
 
-1. Install required tools
+This repository includes:
 
-   Ensure the tools are installed on your system:
-   - Ansible
-   - Docker
-   - Hashicorp Packer
-   - kubectl (and already configured for your Kubernetes cluster)
-   - Helm
+- **HashiCorp Packer Templates**: For building optimized Slurm container images
+- **Ansible Playbooks**: For automated system configuration and service deployment
+- **Kubernetes Manifests**: For orchestrating the containerized Slurm environment
+- **Helm Charts**: For packaging and simplified deployment
+
+## Prerequisites
+
+Ensure these tools are installed on your system:
+- Ansible
+- Docker
+- HashiCorp Packer
+- kubectl (configured for your Kubernetes cluster)
+- Helm
+
+## Deploying
 
 1. Build the Slurm container image.
 
@@ -122,6 +128,8 @@ This repo contains code to build and deploy a Slurm cluster using containers. It
    For more information about using Slurm, please refer to:
    https://slurm.schedmd.com/documentation.html
    ```
+
+## Verification
 
 1. Verify the helm release status.
 
@@ -315,6 +323,10 @@ This repo contains code to build and deploy a Slurm cluster using containers. It
       slurm-cluster-slurmd   Deployment/slurm-cluster-slurmd   0%/80%, 0%/70%   1         10        1          9m38s
       ```
 
+## Testing
+
+This shows how to launch test jobs into Slurm after the cluster has deployed.
+
 1. Check the Slurm cluster status.
 
    1. List the partitions.
@@ -502,9 +514,11 @@ This repo contains code to build and deploy a Slurm cluster using containers. It
 
 ## Teardown
 
+This will remove the cluster and its pods.
+
 1. Delete the Kubernetes resources.
 
-```shell
-helm uninstall slurm-cluster --namespace slurm-cluster
-kubectl delete namespace slurm-cluster
-```
+   ```shell
+   helm uninstall slurm-cluster --namespace slurm-cluster
+   kubectl delete namespace slurm-cluster
+   ```
