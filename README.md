@@ -126,7 +126,7 @@ This repo contains code to build and deploy a Slurm cluster using containers. It
 1. Verify the helm release status.
 
    ```shell
-   helm ls -n slurm-cluster
+   helm ls --namespace slurm-cluster
    ```
 
    ```plaintext
@@ -320,7 +320,12 @@ This repo contains code to build and deploy a Slurm cluster using containers. It
    1. List the partitions.
 
       ```shell
-      kubectl exec --namespace slurm-cluster -it slurm-cluster-slurmctld-0 -- sinfo
+      pod_name=$(kubectl get pods \
+      --namespace slurm-cluster \
+      -l "app.kubernetes.io/instance=slurm-cluster,app.kubernetes.io/component=slurmctld" \
+      -o jsonpath='{.items[0].metadata.name}')
+
+      kubectl exec --namespace slurm-cluster -it $pod_name -- sinfo
       ```
 
       ```plaintext
@@ -332,7 +337,7 @@ This repo contains code to build and deploy a Slurm cluster using containers. It
    1. List the Slurm nodes.
 
       ```shell
-      kubectl exec --namespace slurm-cluster -it slurm-cluster-slurmctld-0 -- scontrol show nodes
+      kubectl exec --namespace slurm-cluster -it $pod_name -- scontrol show nodes
       ```
 
       ```plaintext
@@ -354,65 +359,152 @@ This repo contains code to build and deploy a Slurm cluster using containers. It
          CurrentWatts=0 AveWatts=0
       ```
 
-1. Launch a test Slurm job.
+1. Launch a test hello-world Slurm job.
 
    1. Copy a job script into a container.
 
       ```shell
-      kubectl cp scripts/hello-job.sh slurm-cluster/$(kubectl get pod -l app=slurmctld -n slurm-cluster -o jsonpath='{.items[0].metadata.name}'):/tmp/hello-job.sh
+      pod_name=$(kubectl get pods \
+      --namespace slurm-cluster \
+      -l "app.kubernetes.io/instance=slurm-cluster,app.kubernetes.io/component=slurmctld" \
+      -o jsonpath='{.items[0].metadata.name}')
+
+      kubectl --namespace slurm-cluster cp scripts/hello-world-job.sh "${pod_name}":/tmp/
       ```
 
-   1. Submit a job as the slurm user.
+   1. Submit the job.
 
       ```shell
-      kubectl exec -n slurm-cluster -it $(kubectl get pod -l app=slurmctld -n slurm-cluster -o jsonpath='{.items[0].metadata.name}') \
-      -c slurmctld -- su - slurm -c "sbatch /tmp/hello-job.sh"
+      kubectl exec --namespace slurm-cluster -it "${pod_name}" -- sbatch /tmp/hello-world-job.sh
+      ```
+
+      ```plaintext
+      Defaulted container "slurmctld" out of: slurmctld, copy-slurmdbd-conf (init), copy-slurm-conf (init)
+      Submitted batch job 1
       ```
 
    1. Check the job status.
 
       ```shell
-      kubectl exec -n slurm-cluster -it $(kubectl get pod -l app=slurmctld -n slurm-cluster -o jsonpath='{.items[0].metadata.name}') -c slurmctld -- squeue
-
-      kubectl exec -n slurm-cluster -it $(kubectl get pod -l app=slurmctld -n slurm-cluster -o jsonpath='{.items[0].metadata.name}') -c slurmctld -- sacct --format=JobID,JobName,State,NodeList%25,StdOut,StdErr
+      kubectl exec --namespace slurm-cluster -it "${pod_name}" -- sacct --format=JobID,JobName,State,NodeList%25,StdOut,StdErr
       ```
 
       ```plaintext
-      JobID           JobName      State                  NodeList               StdOut               StdErr
-      ------------ ---------- ---------- ------------------------- -------------------- --------------------
-      1             debug-job    PENDING             None assigned      /tmp/job-%j.out      /tmp/job-%j.err
-      2             debug-job  COMPLETED    slurmd-879764659-nkz29      /tmp/job-%j.out      /tmp/job-%j.err
-      2.batch           batch  COMPLETED    slurmd-879764659-nkz29
-      3             debug-job  COMPLETED    slurmd-879764659-nkz29      /tmp/job-%j.out      /tmp/job-%j.err
-      3.batch           batch  COMPLETED    slurmd-879764659-nkz29
+      Defaulted container "slurmctld" out of: slurmctld, copy-slurmdbd-conf (init), copy-slurm-conf (init)
+      JobID           JobName      State                  NodeList               StdOut               StdErr 
+      ------------ ---------- ---------- ------------------------- -------------------- -------------------- 
+      1             hello-wo+  COMPLETED slurm-cluster-slurmd-77f+      /tmp/job-%j.out      /tmp/job-%j.err 
+      1.batch           batch  COMPLETED slurm-cluster-slurmd-77f+
       ```
 
    1. Check the job's output file. Use the node (container name the job ran in) and log file from sacct above.
 
       ```shell
-      kubectl exec -n slurm-cluster -it slurmd-879764659-nkz29 -c slurmd -- cat /tmp/job-3.out
+      pod_name=$(kubectl get pods \
+      --namespace slurm-cluster \
+      -l "app.kubernetes.io/instance=slurm-cluster,app.kubernetes.io/component=slurmd" \
+      -o jsonpath='{.items[0].metadata.name}')
+
+      kubectl exec --namespace slurm-cluster -it "${pod_name}" -- cat /tmp/job-1.out
       ```
 
-1. Scale-up the cluster by adding more worker nodes.
+      ```plaintext
+      Starting job at Sun Dec 22 23:31:33 UTC 2024
+      Running on hostname: slurm-cluster-slurmd-77f8554695-wjmgr
+      Job ID: 1
+      Job name: hello-world
+      Allocated nodes: slurm-cluster-slurmd-77f8554695-wjmgr
+      Number of CPUs allocated: 1
+      Job completed at Sun Dec 22 23:31:33 UTC 2024
+      ```
 
-   ```shell
-   kubectl scale deployment slurmd --replicas=5 -n slurm-cluster
-   ```
+1. Launch a CPU stress job and verify scale-up of the cluster's slurmd nodes.
 
-   ```shell
-   kubectl exec -n slurm-cluster -it $(kubectl get pod -l app=slurmctld -n slurm-cluster -o jsonpath='{.items[0].metadata.name}') -c slurmctld -- sinfo
-   ```
+   1. See how many slurmd instances there are before starting.
 
-   ```plaintext
-   PARTITION AVAIL  TIMELIMIT  NODES  STATE NODELIST
-   main*        up   infinite      5   idle slurmd-879764659-2cmks,slurmd-879764659-4gvnj,slurmd-879764659-b4q5d,slurmd-879764659-nkz29,slurmd-879764659-qlnh6
-   ```
+      ```shell
+      kubectl get hpa --namespace slurm-cluster -l "app.kubernetes.io/instance=slurm-cluster"
+      ```
+
+      ```plaintext
+      NAME                   REFERENCE                         TARGETS          MINPODS   MAXPODS   REPLICAS   AGE
+      slurm-cluster-slurmd   Deployment/slurm-cluster-slurmd   0%/80%, 0%/70%   1         10        1          9m38s
+      ```
+
+   1. Copy a job script into a container.
+
+      ```shell
+      pod_name=$(kubectl get pods \
+      --namespace slurm-cluster \
+      -l "app.kubernetes.io/instance=slurm-cluster,app.kubernetes.io/component=slurmctld" \
+      -o jsonpath='{.items[0].metadata.name}')
+
+      kubectl --namespace slurm-cluster cp scripts/cpu-stress-job.sh "${pod_name}":/tmp/
+      ```
+
+   1. Submit the job.
+
+      ```shell
+      kubectl exec --namespace slurm-cluster -it "${pod_name}" -- sbatch /tmp/cpu-stress-job.sh
+      ```
+
+      ```plaintext
+      Defaulted container "slurmctld" out of: slurmctld, copy-slurmdbd-conf (init), copy-slurm-conf (init)
+      Submitted batch job 2
+      ```
+
+   1. Check the job status.
+
+      ```shell
+      kubectl exec --namespace slurm-cluster -it "${pod_name}" -- sacct --format=JobID,JobName,State,NodeList%25,StdOut,StdErr
+      ```
+
+      ```plaintext
+      JobID           JobName      State                  NodeList               StdOut               StdErr 
+      ------------ ---------- ---------- ------------------------- -------------------- -------------------- 
+      1             debug-job  COMPLETED slurm-cluster-slurmd-77f+      /tmp/job-%j.out      /tmp/job-%j.err 
+      1.batch           batch  COMPLETED slurm-cluster-slurmd-77f+                                           
+      2            cpu-stress  COMPLETED slurm-cluster-slurmd-77f+ /tmp/cpu-stress-%j.+ /tmp/cpu-stress-%j.+ 
+      2.batch           batch  COMPLETED slurm-cluster-slurmd-77f+
+      ```
+
+   1. Check the job's output file. Use the node (container name the job ran in) and log file from sacct above.
+
+      ```shell
+      pod_name=$(kubectl get pods \
+      --namespace slurm-cluster \
+      -l "app.kubernetes.io/instance=slurm-cluster,app.kubernetes.io/component=slurmd" \
+      -o jsonpath='{.items[0].metadata.name}')
+
+      kubectl exec --namespace slurm-cluster -it "${pod_name}" -- cat /tmp/job-2.out
+      ```
+
+   1. While the job is running, see if more slurmd pods have been provisioned.
+
+      ```shell
+      kubectl get hpa --namespace slurm-cluster -l "app.kubernetes.io/instance=slurm-cluster"
+      ```
+
+      ```plaintext
+      NAME                   REFERENCE                         TARGETS            MINPODS   MAXPODS   REPLICAS   AGE
+      slurm-cluster-slurmd   Deployment/slurm-cluster-slurmd   0%/80%, 100%/70%   1         10        2          4h56m
+      ```
+
+      ```shell
+      kubectl get pods --namespace slurm-cluster -l "app.kubernetes.io/instance=slurm-cluster,app.kubernetes.io/component=slurmd"
+      ```
+
+      ```plaintext
+      NAME                                    READY   STATUS    RESTARTS   AGE
+      slurm-cluster-slurmd-77f8554695-4hgcg   1/1     Running   0          20m
+      slurm-cluster-slurmd-77f8554695-z9nhp   1/1     Running   0          42s
+      ```
 
 ## Teardown
 
 1. Delete the Kubernetes resources.
 
 ```shell
-helm uninstall slurm-cluster -n slurm-cluster
+helm uninstall slurm-cluster --namespace slurm-cluster
 kubectl delete namespace slurm-cluster
 ```

@@ -41,6 +41,7 @@
           - vim
           - dnsutils
           - iproute2
+          - stress-ng
         state: present
 
     - name: Download Slurm source tarball

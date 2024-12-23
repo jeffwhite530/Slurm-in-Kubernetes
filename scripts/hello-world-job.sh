@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=debug-job
+#SBATCH --job-name=hello-world
 #SBATCH --output=/tmp/job-%j.out
 #SBATCH --error=/tmp/job-%j.err
 #SBATCH --ntasks=1
