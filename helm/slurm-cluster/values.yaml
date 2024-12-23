@@ -64,14 +64,6 @@ slurmctld:
         - lavender
 slurmd:
   deployment:
-    autoscaling:
-      enabled: true
-      minReplicas: 1
-      maxReplicas: 10  # Adjust based on your cluster needs
-      # Scale up when CPU utilization exceeds 70%
-      targetCPUUtilizationPercentage: 70
-      # Scale up when memory utilization exceeds 80%
-      targetMemoryUtilizationPercentage: 80
     image: docker-registry.jealwh.local:5000/slurm:24-11-0-1
     replicaCount: 1
     resources:

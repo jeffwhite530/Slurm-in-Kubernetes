@@ -6,7 +6,6 @@ This project provides a containerized Slurm cluster solution running on Kubernet
 
 - **Automatic Installation**: Automated deployment of Slurm's components and worker nodes (pods)
 - **Database Integration**: Preconfigured MariaDB backend for job accounting and reporting
-- **Dynamic Autoscaling**: Automatically scales compute nodes based on workload using Kubernetes HorizontalPodAutoscaler
 - **Common Foundation**: Built with [Debian](https://hub.docker.com/_/debian) and [Slurm](https://github.com/SchedMD/slurm)
 
 ## Components
@@ -312,17 +311,6 @@ Ensure these tools are installed on your system:
       2024-12-22 19:17:37,598 - INFO - Starting to watch for pod events...
       ```
 
-   1. Is the HorizontalPodAutoscaler for the slurmd nodes reporting correctly?
-
-      ```shell
-      kubectl get hpa --namespace slurm-cluster -l "app.kubernetes.io/instance=slurm-cluster"
-      ```
-
-      ```plaintext
-      NAME                   REFERENCE                         TARGETS          MINPODS   MAXPODS   REPLICAS   AGE
-      slurm-cluster-slurmd   Deployment/slurm-cluster-slurmd   0%/80%, 0%/70%   1         10        1          9m38s
-      ```
-
 ## Testing
 
 This shows how to launch test jobs into Slurm after the cluster has deployed.
@@ -430,87 +418,7 @@ This shows how to launch test jobs into Slurm after the cluster has deployed.
       Job completed at Sun Dec 22 23:31:33 UTC 2024
       ```
 
-1. Launch a CPU stress job and verify scale-up of the cluster's slurmd nodes.
-
-   1. See how many slurmd instances there are before starting.
-
-      ```shell
-      kubectl get hpa --namespace slurm-cluster -l "app.kubernetes.io/instance=slurm-cluster"
-      ```
-
-      ```plaintext
-      NAME                   REFERENCE                         TARGETS          MINPODS   MAXPODS   REPLICAS   AGE
-      slurm-cluster-slurmd   Deployment/slurm-cluster-slurmd   0%/80%, 0%/70%   1         10        1          9m38s
-      ```
-
-   1. Copy a job script into a container.
-
-      ```shell
-      pod_name=$(kubectl get pods \
-      --namespace slurm-cluster \
-      -l "app.kubernetes.io/instance=slurm-cluster,app.kubernetes.io/component=slurmctld" \
-      -o jsonpath='{.items[0].metadata.name}')
-
-      kubectl --namespace slurm-cluster cp scripts/cpu-stress-job.sh "${pod_name}":/tmp/
-      ```
-
-   1. Submit the job.
-
-      ```shell
-      kubectl exec --namespace slurm-cluster -it "${pod_name}" -- sbatch /tmp/cpu-stress-job.sh
-      ```
-
-      ```plaintext
-      Defaulted container "slurmctld" out of: slurmctld, copy-slurmdbd-conf (init), copy-slurm-conf (init)
-      Submitted batch job 2
-      ```
-
-   1. Check the job status.
-
-      ```shell
-      kubectl exec --namespace slurm-cluster -it "${pod_name}" -- sacct --format=JobID,JobName,State,NodeList%25,StdOut,StdErr
-      ```
-
-      ```plaintext
-      JobID           JobName      State                  NodeList               StdOut               StdErr 
-      ------------ ---------- ---------- ------------------------- -------------------- -------------------- 
-      1             debug-job  COMPLETED slurm-cluster-slurmd-77f+      /tmp/job-%j.out      /tmp/job-%j.err 
-      1.batch           batch  COMPLETED slurm-cluster-slurmd-77f+                                           
-      2            cpu-stress  COMPLETED slurm-cluster-slurmd-77f+ /tmp/cpu-stress-%j.+ /tmp/cpu-stress-%j.+ 
-      2.batch           batch  COMPLETED slurm-cluster-slurmd-77f+
-      ```
-
-   1. Check the job's output file. Use the node (container name the job ran in) and log file from sacct above.
-
-      ```shell
-      pod_name=$(kubectl get pods \
-      --namespace slurm-cluster \
-      -l "app.kubernetes.io/instance=slurm-cluster,app.kubernetes.io/component=slurmd" \
-      -o jsonpath='{.items[0].metadata.name}')
-
-      kubectl exec --namespace slurm-cluster -it "${pod_name}" -- cat /tmp/job-2.out
-      ```
-
-   1. While the job is running, see if more slurmd pods have been provisioned.
-
-      ```shell
-      kubectl get hpa --namespace slurm-cluster -l "app.kubernetes.io/instance=slurm-cluster"
-      ```
-
-      ```plaintext
-      NAME                   REFERENCE                         TARGETS            MINPODS   MAXPODS   REPLICAS   AGE
-      slurm-cluster-slurmd   Deployment/slurm-cluster-slurmd   0%/80%, 100%/70%   1         10        2          4h56m
-      ```
-
-      ```shell
-      kubectl get pods --namespace slurm-cluster -l "app.kubernetes.io/instance=slurm-cluster,app.kubernetes.io/component=slurmd"
-      ```
-
-      ```plaintext
-      NAME                                    READY   STATUS    RESTARTS   AGE
-      slurm-cluster-slurmd-77f8554695-4hgcg   1/1     Running   0          20m
-      slurm-cluster-slurmd-77f8554695-z9nhp   1/1     Running   0          42s
-      ```
+The slurmd deployment can be scaled manually (e.g. `kubectl --namespace slurm-cluster scale deployment/slurm-cluster-slurmd --replicas=N`). The node-watcher pod will automatically register new slurmd pods with Slurm when they appear and remove them from Slurm when a pod is deleted.
 
 ## Teardown
 
