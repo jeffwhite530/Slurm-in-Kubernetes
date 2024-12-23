@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=debug-job
+#SBATCH --job-name=hello-world
 #SBATCH --output=/tmp/job-%j.out
 #SBATCH --error=/tmp/job-%j.err
 #SBATCH --ntasks=1
@@ -15,4 +15,3 @@ echo "Allocated nodes: $SLURM_JOB_NODELIST"
 echo "Number of CPUs allocated: $SLURM_CPUS_ON_NODE"
 
 echo "Job completed at $(date)"
-

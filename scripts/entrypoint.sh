@@ -39,118 +39,159 @@ get_cpu_quota() {
 }
 
 
-setup_munge() {
+launch_munged() {
   log "Preparing for munge daemon"
 
-  for dir in "/run/munge" "/var/log/munge" "/etc/munge"; do
-    mkdir -p "$dir"
-    chown munge:munge "$dir"
-  done
+  chmod 0700 /etc/munge
+
+  # Create base munge directory
+  mkdir -p /home/slurm/munge
+  chmod 0755 /home/slurm/munge
+
+  # Create key directory (equivalent to ${sysconfdir}/munge)
+  mkdir -p /home/slurm/munge/etc
+  chmod 0700 /home/slurm/munge/etc
+
+  # Create lib directory (equivalent to ${localstatedir}/lib/munge)
+  # Using 0711 to support file-descriptor-passing authentication
+  mkdir -p /home/slurm/munge/lib
+  chmod 0711 /home/slurm/munge/lib
+
+  # Create log directory (equivalent to ${localstatedir}/log/munge)
+  mkdir -p /home/slurm/munge/log
+  chmod 0700 /home/slurm/munge/log
+
+  # Create run directory (equivalent to ${runstatedir}/munge)
+  # Must allow execute permissions for all
+  mkdir -p /home/slurm/munge/run
+  chmod 0755 /home/slurm/munge/run
+
+  # Configure environment for munged
+  export MUNGED_SEEDDIR=/home/slurm/munge/lib
+  
+  local pid_file=/home/slurm/munge/run/munged.pid
+  local socket=/home/slurm/munge/run/munge.socket.2
+  local log_file=/home/slurm/munge/log/munged.log
 
   log "Checking for munge key"
   if [[ -f /etc/munge/munge.key ]]; then
-    log "/etc/munge/munge.key already exists"
+    log "Munge key already exists at /etc/munge/munge.key"
   else
     log "Creating munge key at /etc/munge/munge.key"
     /usr/sbin/mungekey --verbose --create --keyfile=/etc/munge/munge.key
   fi
-  chown munge:munge /etc/munge/munge.key
-  chmod 400 /etc/munge/munge.key
+
+  chmod 600 /etc/munge/munge.key
 
   log "Starting munge daemon"
-  sudo -u munge /usr/sbin/munged
+  exec /usr/sbin/munged \
+    --key-file=/etc/munge/munge.key \
+    --seed-file="${MUNGED_SEEDDIR}/seed" \
+    --pid-file="${pid_file}" \
+    --socket="${socket}" \
+    --log-file="${log_file}" &
 
-  sleep 5
+  # Wait for the socket to be created
+  until [ -S "${socket}" ]; do
+    sleep 1
+  done
 }
 
 
 launch_slurmdbd() {
   log "Preparing for slurmdbd daemon"
 
-  touch /var/log/slurmdbd.log
-  chown slurm:slurm /var/log/slurmdbd.log
-
-  touch /var/run/slurmdbd.pid
-  chown slurm:slurm /var/run/slurmdbd.pid
-
-  chown slurm:slurm /etc/slurm/slurmdbd.conf
   chmod 600 /etc/slurm/slurmdbd.conf
 
-  log "Waiting for mariadb to become available"
+  # Create required directories
+  mkdir -p /home/slurm/{run,log}
+  
+  touch /home/slurm/log/slurmdbd.log
 
-  until nc -z mariadb 3306; do
+  # Extract StorageHost from slurmdbd.conf
+  storagehost_addr=$(grep -oP '^StorageHost=\K.*' /etc/slurm/slurmdbd.conf)
+
+  if [ -z "${storagehost_addr}" ]; then
+    log "Error: Could not find StorageHost in /etc/slurm/slurmdbd.conf"
+    exit 1
+  fi
+
+  log "Waiting for mariadb to become available at ${storagehost_addr}"
+  until nc -z "${storagehost_addr}" 3306; do
+    log "Attempting to connect to ${storagehost_addr}:3306..."
     sleep 5
   done
-
-  log "mariadb is up - proceeding with startup"
+  log "mariadb is up at ${storagehost_addr} - proceeding with startup"
 
   log "Starting slurmdbd daemon"
-  exec sudo -u slurm /usr/sbin/slurmdbd -D -v
+  exec /usr/sbin/slurmdbd -D -v
 }
 
 
 launch_slurmctld() {
   log "Preparing for slurmctld daemon"
 
-  touch /var/log/slurmctld.log
-  chown slurm:slurm /var/log/slurmctld.log
+  # Create required directories
+  mkdir -p /home/slurm/{run,log,spool/slurmctld}
 
-  touch /var/run/slurmctld.pid
-  chown slurm:slurm /var/run/slurmctld.pid
+  touch /home/slurm/log/slurmctld.log
 
-  mkdir -p /var/spool/slurmctld
-  chown slurm:slurm /var/spool/slurmctld
+  # Extract AccountingStorageHost from slurm.conf
+  slurmdbd_addr=$(grep -oP '^AccountingStorageHost=\K.*' /etc/slurm/slurm.conf)
 
-  log "Waiting for slurmdbd to become available"
+  if [ -z "${slurmdbd_addr}" ]; then
+    log "Error: Could not find AccountingStorageHost in /etc/slurm/slurm.conf"
+    exit 1
+  fi
 
-  until nc -z slurmdbd 6819; do
+  log "Waiting for slurmdbd to become available at ${slurmdbd_addr}"
+  until nc -z "${slurmdbd_addr}" 6819; do
+    log "Attempting to connect to ${slurmdbd_addr}:6819..."
     sleep 5
   done
-
-  log "slurmdbd is up - proceeding with startup"
+  log "slurmdbd is up at ${slurmdbd_addr} - proceeding with startup"
 
   log "Starting slurmctld daemon"
-  exec sudo -u slurm /usr/sbin/slurmctld -D -v
+  exec /usr/sbin/slurmctld -D -v
 }
 
 
 launch_slurmd() {
   log "Preparing for slurmd daemon"
 
-  touch /var/log/slurmd.log
-  chown slurm:slurm /var/log/slurmd.log
+  # Create required directories
+  mkdir -p /home/slurm/{run,log,spool/slurmd}
 
-  touch /var/run/slurmd.pid
-  chown slurm:slurm /var/run/slurmd.pid
+  touch /home/slurm/log/slurmd.log
 
-  mkdir -p /var/spool/slurmd
-  chown slurm:slurm /var/spool/slurmd
+  # Extract SlurmctldHost from slurm.conf
+  slurmctld_addr=$(grep -oP '^SlurmctldHost=\K.*' /etc/slurm/slurm.conf)
 
-  log "Waiting for slurmctld to become available"
+  if [ -z "${slurmctld_addr}" ]; then
+    log "Error: Could not find SlurmctldHost in /etc/slurm/slurm.conf"
+    exit 1
+  fi
 
-  until nc -z slurmctld 6817; do
+  log "Waiting for slurmctld to become available at ${slurmctld_addr}"
+  until nc -z "${slurmctld_addr}" 6817; do
+    log "Attempting to connect to ${slurmctld_addr}:6817..."
     sleep 5
   done
+  log "slurmctld is up at ${slurmctld_addr} - proceeding with startup"
 
-  log "slurmctld is up - proceeding with startup"   
-
-  log "Staring dbus"
-  mkdir -p /run/dbus
-  chown messagebus:messagebus /run/dbus
-  chmod 755 /run/dbus
   dbus-daemon --system --fork --nopidfile
 
   cpu_count=$(get_cpu_quota)
 
   # Get memory limit in MB
   if [ -f /sys/fs/cgroup/memory.max ]; then
-    # cgroups v2
+    log "Getting memory amount from cgroups v2"
     memory=$(( $(cat /sys/fs/cgroup/memory.max) / 1024 / 1024 ))
   elif [ -f /sys/fs/cgroup/memory/memory.limit_in_bytes ]; then
-    # cgroups v1
+    log "Getting memory amount from cgroups v1"
     memory=$(( $(cat /sys/fs/cgroup/memory/memory.limit_in_bytes) / 1024 / 1024 ))
   else
-    # Fallback to total system memory
+    log "Getting memory amount from system (/proc/meminfo)"
     memory=$(( $(grep MemTotal /proc/meminfo | awk '{print $2}') / 1024 ))
   fi
 
@@ -159,8 +200,34 @@ IgnoreSystemd=yes
 CgroupPlugin=disabled
 EOF
 
+  echo "$memory"
+
   log "Starting slurmd daemon"
-  exec sudo -u slurm /usr/sbin/slurmd -D -Z -f /etc/slurm/slurm.conf --conf "CPUs=$cpu_count RealMemory=$memory"
+  exec /usr/sbin/slurmd -D -Z \
+       --conf "CPUs=$cpu_count RealMemory=$memory"
+}
+
+
+launch_slurm-node-watcher() {
+  log "Preparing for slurm-node-watcher daemon"
+
+  # Extract SlurmctldHost from slurm.conf
+  slurmctld_addr=$(grep -oP '^SlurmctldHost=\K.*' /etc/slurm/slurm.conf)
+
+  if [ -z "${slurmctld_addr}" ]; then
+    log "Error: Could not find SlurmctldHost in /etc/slurm/slurm.conf"
+    exit 1
+  fi
+
+  log "Waiting for slurmctld to become available at ${slurmctld_addr}"
+  until nc -z "${slurmctld_addr}" 6817; do
+    log "Attempting to connect to ${slurmctld_addr}:6817..."
+    sleep 5
+  done
+  log "slurmctld is up at ${slurmctld_addr} - proceeding with startup"
+
+  log "Starting slurm-node-watcher daemon"
+  exec /usr/bin/python3 /usr/local/bin/slurm-node-watcher.py
 }
 
 
@@ -171,19 +238,23 @@ log "Starting entrypoint script"
 # Determine which daemon to launch based on the first argument
 case "${1:-}" in
   "launch_slurmdbd")
-    setup_munge
+    launch_munged
     launch_slurmdbd
     ;;
   "launch_slurmctld")
-    setup_munge
+    launch_munged
     launch_slurmctld
     ;;
   "launch_slurmd")
-    setup_munge
+    launch_munged
     launch_slurmd
     ;;
+  "launch_slurm-node-watcher")
+    launch_munged
+    launch_slurm-node-watcher
+    ;;
   *)
-    log "Usage: $0 {launch_slurmdbd|launch_slurmctld|launch_slurmd}"
+    log "Usage: $0 {launch_slurmdbd|launch_slurmctld|launch_slurmd|launch_slurm-node-watcher}"
     exit 1
     ;;
 esac

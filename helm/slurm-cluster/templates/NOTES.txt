@@ -1,0 +1,45 @@
+Thank you for installing {{ include "slurm-cluster.fullname" . }}!
+
+Your Slurm cluster has been deployed with the following components:
+
+1. MariaDB Database:
+   Service: {{ include "slurm-cluster.fullname" . }}-mariadb:3306
+
+2. Slurm Database Daemon (slurmdbd):
+   Service: {{ include "slurm-cluster.fullname" . }}-slurmdbd:6819
+
+3. Slurm Controller (slurmctld):
+   Service: {{ include "slurm-cluster.fullname" . }}-slurmctld:6817
+   {{- if .Values.ingressNginx.enabled }}
+   External access: Available through nginx on port 6817
+   Note: nginx Ingress Controller was installed as part of this deployment
+   {{- end }}
+
+4. Slurm node watcher
+   Monitors the Kubernetes event stream to add or remove slurmd nodes from the Slurm controller.
+
+5. Compute Nodes (slurmd):
+   Initial replicas: {{ .Values.slurmd.deployment.replicaCount }}
+{{- if .Values.slurmd.deployment.autoscaling.enabled }}
+   Autoscaling enabled:
+   - Min replicas: {{ .Values.slurmd.deployment.autoscaling.minReplicas }}
+   - Max replicas: {{ .Values.slurmd.deployment.autoscaling.maxReplicas }}
+{{- end }}
+
+To verify your installation:
+
+1. Check that all pods are running:
+   kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }}"
+
+2. View slurmctld logs:
+   kubectl logs --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=slurmctld"
+
+3. Check cluster status (from slurmctld pod):
+   kubectl exec --namespace {{ .Release.Namespace }} deploy/{{ include "slurm-cluster.fullname" . }}-slurmctld -- sinfo
+{{- if .Values.ingressNginx.enabled }}
+4. Verify TCP access is configured:
+   kubectl get configmap -n ingress-nginx tcp-services -o yaml
+{{- end }}
+
+For more information about using Slurm, please refer to:
+https://slurm.schedmd.com/documentation.html

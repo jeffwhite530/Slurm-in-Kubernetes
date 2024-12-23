@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "slurm-cluster.fullname" . }}-slurmd
+  labels:
+    {{- include "slurm-cluster.labels" . | nindent 4 }}
+    app.kubernetes.io/component: slurmd
+spec:
+  replicas: {{ .Values.slurmd.deployment.replicaCount }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "slurm-cluster.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: slurmd
+  template:
+    metadata:
+      labels:
+        {{- include "slurm-cluster.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: slurmd
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: copy-slurm-conf
+          image: {{ .Values.slurmd.deployment.image }}
+          imagePullPolicy: Always
+          command: ["/bin/bash"]
+          args:
+            - -c
+            - |
+              cp /slurmconf-configmap/slurm.conf /etc/slurm/slurm.conf
+          volumeMounts:
+            - name: slurmconf-configmap-volume
+              mountPath: /slurmconf-configmap
+            - name: etc-slurm-dir
+              mountPath: /etc/slurm
+      containers:
+        - name: slurmd
+          image: {{ .Values.slurmd.deployment.image }}
+          imagePullPolicy: Always
+          resources:
+            {{- toYaml .Values.slurmd.deployment.resources | nindent 12 }}
+          command: ["/bin/bash"]
+          args:
+            - /usr/local/bin/entrypoint.sh
+            - launch_slurmd
+          volumeMounts:
+            - name: etc-slurm-dir
+              mountPath: /etc/slurm
+            - name: etc-munge-dir
+              mountPath: /etc/munge
+            - name: run-dbus-dir
+              mountPath: /run/dbus
+            - name: var-spool-slurmd-dir
+              mountPath: /var/spool/slurmd
+          livenessProbe:
+            tcpSocket:
+              port: 6818
+            {{- toYaml .Values.probes.liveness | nindent 12 }}
+          readinessProbe:
+            tcpSocket:
+              port: 6818
+            {{- toYaml .Values.probes.readiness | nindent 12 }}
+      volumes:
+        - name: slurmconf-configmap-volume
+          configMap:
+            name: {{ include "slurm-cluster.fullname" . }}-slurm-config
+        - name: etc-slurm-dir
+          emptyDir: {}
+        - name: etc-munge-dir
+          persistentVolumeClaim:
+            claimName: {{ include "slurm-cluster.fullname" . }}-munge-pvc
+        - name: run-dbus-dir
+          emptyDir: {}
+        - name: var-spool-slurmd-dir
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
