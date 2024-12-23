@@ -74,8 +74,8 @@ slurmd:
         memory: "4Gi"
         cpu: "1000m"
 
-# The Slurm node controller (adds and removes slurmd nodes via scrontrol)
-nodeController:
+# The Slurm node watcher (adds and removes slurmd nodes via scrontrol)
+nodeWatcher:
   deployment:
     resources:
       requests:

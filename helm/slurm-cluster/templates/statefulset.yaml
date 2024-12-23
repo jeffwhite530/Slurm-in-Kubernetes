@@ -314,7 +314,7 @@ spec:
           image: {{ .Values.slurmd.deployment.image }}
           imagePullPolicy: Always
           resources:
-            {{- toYaml .Values.nodeController.deployment.resources | nindent 12 }}
+            {{- toYaml .Values.nodeWatcher.deployment.resources | nindent 12 }}
           command: ["/bin/bash"]
           args:
             - /usr/local/bin/entrypoint.sh
