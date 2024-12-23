@@ -45,33 +45,33 @@ launch_munged() {
   chmod 0700 /etc/munge
 
   # Create base munge directory
-  mkdir -p /home/slurm/munge
-  chmod 0755 /home/slurm/munge
+  mkdir -p /app/slurm/munge
+  chmod 0755 /app/slurm/munge
 
   # Create key directory (equivalent to ${sysconfdir}/munge)
-  mkdir -p /home/slurm/munge/etc
-  chmod 0700 /home/slurm/munge/etc
+  mkdir -p /app/slurm/munge/etc
+  chmod 0700 /app/slurm/munge/etc
 
   # Create lib directory (equivalent to ${localstatedir}/lib/munge)
   # Using 0711 to support file-descriptor-passing authentication
-  mkdir -p /home/slurm/munge/lib
-  chmod 0711 /home/slurm/munge/lib
+  mkdir -p /app/slurm/munge/lib
+  chmod 0711 /app/slurm/munge/lib
 
   # Create log directory (equivalent to ${localstatedir}/log/munge)
-  mkdir -p /home/slurm/munge/log
-  chmod 0700 /home/slurm/munge/log
+  mkdir -p /app/slurm/munge/log
+  chmod 0700 /app/slurm/munge/log
 
   # Create run directory (equivalent to ${runstatedir}/munge)
   # Must allow execute permissions for all
-  mkdir -p /home/slurm/munge/run
-  chmod 0755 /home/slurm/munge/run
+  mkdir -p /app/slurm/munge/run
+  chmod 0755 /app/slurm/munge/run
 
   # Configure environment for munged
-  export MUNGED_SEEDDIR=/home/slurm/munge/lib
+  export MUNGED_SEEDDIR=/app/slurm/munge/lib
   
-  local pid_file=/home/slurm/munge/run/munged.pid
-  local socket=/home/slurm/munge/run/munge.socket.2
-  local log_file=/home/slurm/munge/log/munged.log
+  local pid_file=/app/slurm/munge/run/munged.pid
+  local socket=/app/slurm/munge/run/munge.socket.2
+  local log_file=/app/slurm/munge/log/munged.log
 
   log "Checking for munge key"
   if [[ -f /etc/munge/munge.key ]]; then
@@ -104,9 +104,9 @@ launch_slurmdbd() {
   chmod 600 /etc/slurm/slurmdbd.conf
 
   # Create required directories
-  mkdir -p /home/slurm/{run,log}
+  mkdir -p /app/slurm/{run,log}
   
-  touch /home/slurm/log/slurmdbd.log
+  touch /app/slurm/log/slurmdbd.log
 
   # Extract StorageHost from slurmdbd.conf
   storagehost_addr=$(grep -oP '^StorageHost=\K.*' /etc/slurm/slurmdbd.conf)
@@ -132,9 +132,9 @@ launch_slurmctld() {
   log "Preparing for slurmctld daemon"
 
   # Create required directories
-  mkdir -p /home/slurm/{run,log,spool/slurmctld}
+  mkdir -p /app/slurm/{run,log,spool/slurmctld}
 
-  touch /home/slurm/log/slurmctld.log
+  touch /app/slurm/log/slurmctld.log
 
   # Extract AccountingStorageHost from slurm.conf
   slurmdbd_addr=$(grep -oP '^AccountingStorageHost=\K.*' /etc/slurm/slurm.conf)
@@ -160,9 +160,9 @@ launch_slurmd() {
   log "Preparing for slurmd daemon"
 
   # Create required directories
-  mkdir -p /home/slurm/{run,log,spool/slurmd}
+  mkdir -p /app/slurm/{run,log,spool/slurmd}
 
-  touch /home/slurm/log/slurmd.log
+  touch /app/slurm/log/slurmd.log
 
   # Extract SlurmctldHost from slurm.conf
   slurmctld_addr=$(grep -oP '^SlurmctldHost=\K.*' /etc/slurm/slurm.conf)
