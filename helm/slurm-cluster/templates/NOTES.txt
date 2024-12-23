@@ -20,11 +20,6 @@ Your Slurm cluster has been deployed with the following components:
 
 5. Compute Nodes (slurmd):
    Initial replicas: {{ .Values.slurmd.deployment.replicaCount }}
-{{- if .Values.slurmd.deployment.autoscaling.enabled }}
-   Autoscaling enabled:
-   - Min replicas: {{ .Values.slurmd.deployment.autoscaling.minReplicas }}
-   - Max replicas: {{ .Values.slurmd.deployment.autoscaling.maxReplicas }}
-{{- end }}
 
 To verify your installation:
 

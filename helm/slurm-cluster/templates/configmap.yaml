@@ -37,7 +37,7 @@ data:
     ArchiveTXN=no
     ArchiveUsage=no
     #ArchiveScript=/usr/sbin/slurm.dbd.archive
-    AuthInfo=socket=/home/slurm/munge/run/munge.socket.2
+    AuthInfo=socket=/app/slurm/munge/run/munge.socket.2
     AuthType=auth/munge
     DbdHost=localhost
     DebugLevel=info
@@ -48,8 +48,8 @@ data:
     PurgeSuspendAfter=1month
     PurgeTXNAfter=3month
     PurgeUsageAfter=6month
-    LogFile=/home/slurm/log/slurmdbd.log
-    PidFile=/home/slurm/run/slurmdbd.pid
+    LogFile=/app/slurm/log/slurmdbd.log
+    PidFile=/app/slurm/run/slurmdbd.pid
     SlurmUser={{ .Values.podSecurityContext.runAsUser }}
     StorageHost={{ include "slurm-cluster.fullname" . }}-mariadb-0
     StoragePass=STORAGE_PASS
@@ -65,7 +65,7 @@ metadata:
     app.kubernetes.io/component: slurmctld
 data:
   slurm.conf: |
-    AuthInfo=socket=/home/slurm/munge/run/munge.socket.2
+    AuthInfo=socket=/app/slurm/munge/run/munge.socket.2
     AuthType=auth/munge
     ClusterName={{ include "slurm-cluster.fullname" . }}
     SlurmctldHost={{ include "slurm-cluster.fullname" . }}-slurmctld-0
@@ -74,11 +74,11 @@ data:
     #ProctrackType=proctrack/cgroup
     ProctrackType=proctrack/linuxproc
     ReturnToService=2
-    SlurmctldPidFile=/home/slurm/run/slurmctld.pid
+    SlurmctldPidFile=/app/slurm/run/slurmctld.pid
     SlurmctldPort=6817
-    SlurmdPidFile=/home/slurm/run/slurmd.pid
+    SlurmdPidFile=/app/slurm/run/slurmd.pid
     SlurmdPort=6818
-    SlurmdSpoolDir=/home/slurm/spool/slurmd
+    SlurmdSpoolDir=/app/slurm/spool/slurmd
     SlurmUser={{ .Values.podSecurityContext.runAsUser }}
     SlurmdUser={{ .Values.podSecurityContext.runAsUser }}
     StateSaveLocation=/var/spool/slurmctld
@@ -101,15 +101,15 @@ data:
     # LOGGING AND ACCOUNTING
     AccountingStorageHost={{ include "slurm-cluster.fullname" . }}-slurmdbd-0
     AccountingStorageType=accounting_storage/slurmdbd
-    AccountingStoragePass=socket=/home/slurm/munge/run/munge.socket.2
+    AccountingStoragePass=socket=/app/slurm/munge/run/munge.socket.2
     JobCompType=jobcomp/none
     JobAcctGatherFrequency=30
     #JobAcctGatherType=jobacct_gather/cgroup
     JobAcctGatherType=jobacct_gather/linux
     SlurmctldDebug=info
-    SlurmctldLogFile=/home/slurm/log/slurmctld.log
+    SlurmctldLogFile=/app/slurm/log/slurmctld.log
     SlurmdDebug=info
-    SlurmdLogFile=/home/slurm/log/slurmd.log
+    SlurmdLogFile=/app/slurm/log/slurmd.log
     
     # COMPUTE NODES
     MaxNodeCount=1000
