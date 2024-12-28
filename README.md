@@ -85,8 +85,8 @@ Ensure these tools are installed on your system:
    You should see something like this:
    ```plaintext
    NAME: slurm-cluster
-   LAST DEPLOYED: Sat Dec 21 12:30:33 2024
-   NAMESPACE: slurm-cluster
+   LAST DEPLOYED: Sat Dec 28 15:51:42 2024
+   NAMESPACE: slurm-devel
    STATUS: deployed
    REVISION: 1
    TEST SUITE: None
@@ -95,34 +95,34 @@ Ensure these tools are installed on your system:
 
    Your Slurm cluster has been deployed with the following components:
 
-   1. MariaDB Database:
+   1. MariaDB database:
       Service: slurm-cluster-mariadb:3306
 
-   2. Slurm Database Daemon (slurmdbd):
+   2. Slurm database daemon (slurmdbd):
       Service: slurm-cluster-slurmdbd:6819
 
-   3. Slurm Controller (slurmctld):
+   3. Slurm controller (slurmctld):
       Service: slurm-cluster-slurmctld:6817
 
    4. Slurm node watcher
       Monitors the Kubernetes event stream to add or remove slurmd nodes from the Slurm controller.
 
-   5. Compute Nodes (slurmd):
-      Initial replicas: 1
-      Autoscaling enabled:
-      - Min replicas: 1
-      - Max replicas: 10
+   5. Compute nodes (slurmd pods): 2
 
    To verify your installation:
 
    1. Check that all pods are running:
-      kubectl get pods --namespace slurm-cluster -l "app.kubernetes.io/instance=slurm-cluster"
+      kubectl get pods --namespace slurm-devel -l "app.kubernetes.io/instance=slurm-cluster"
 
-   2. View slurmctld logs:
-      kubectl logs --namespace slurm-cluster -l "app.kubernetes.io/instance=slurm-cluster,app.kubernetes.io/component=slurmctld"
+   2. View component logs:
+      kubectl logs --namespace slurm-devel -l "app.kubernetes.io/instance=slurm-cluster,app.kubernetes.io/component=mariadb"
+      kubectl logs --namespace slurm-devel -l "app.kubernetes.io/instance=slurm-cluster,app.kubernetes.io/component=slurmdbd"
+      kubectl logs --namespace slurm-devel -l "app.kubernetes.io/instance=slurm-cluster,app.kubernetes.io/component=slurmctld"
+      kubectl logs --namespace slurm-devel -l "app.kubernetes.io/instance=slurm-cluster,app.kubernetes.io/component=node-watcher"
+      kubectl logs --namespace slurm-devel -l "app.kubernetes.io/instance=slurm-cluster,app.kubernetes.io/component=slurmd"
 
    3. Check cluster status (from slurmctld pod):
-      kubectl exec --namespace slurm-cluster deploy/slurm-cluster-slurmctld -- sinfo
+      kubectl exec --namespace slurm-devel statefulset/slurm-cluster-slurmctld -- sinfo
 
    For more information about using Slurm, please refer to:
    https://slurm.schedmd.com/documentation.html

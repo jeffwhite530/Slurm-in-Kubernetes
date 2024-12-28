@@ -6,7 +6,11 @@ metadata:
     {{- include "slurm-cluster.labels" . | nindent 4 }}
     app.kubernetes.io/component: slurmd
 spec:
-  replicas: {{ .Values.slurmd.deployment.replicaCount }}
+  {{- $replicas := .Values.defaults.replicas }}
+  {{- if and (hasKey .Values "pods") (hasKey .Values.pods "slurmd") (hasKey .Values.pods.slurmd "replicas") }}
+  {{- $replicas = .Values.pods.slurmd.replicas }}
+  {{- end }}
+  replicas: {{ $replicas }}
   strategy:
     type: Recreate
   selector:
@@ -20,10 +24,22 @@ spec:
         app.kubernetes.io/component: slurmd
     spec:
       securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+        {{- $securityContext := deepCopy .Values.defaults.securityContext }}
+        {{- if hasKey .Values.pods.slurmd "securityContext" }}
+        {{- $securityContext = merge $securityContext .Values.pods.slurmd.securityContext }}
+        {{- end }}
+        {{- toYaml $securityContext | nindent 8 }}
+      imagePullSecrets:
+        {{- $imagePullSecrets := deepCopy .Values.defaults.imagePullSecrets }}
+        {{- if hasKey .Values.pods.slurmd "imagePullSecrets" }}
+        {{- $imagePullSecrets = merge $imagePullSecrets .Values.pods.slurmd.imagePullSecrets }}
+        {{- end }}
+        {{- with $imagePullSecrets }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
       initContainers:
         - name: copy-slurm-conf
-          image: {{ .Values.slurmd.deployment.image }}
+          image: {{ default .Values.defaults.image .Values.pods.slurmd.image }}
           imagePullPolicy: Always
           command: ["/bin/bash"]
           args:
@@ -37,10 +53,18 @@ spec:
               mountPath: /etc/slurm
       containers:
         - name: slurmd
-          image: {{ .Values.slurmd.deployment.image }}
+          {{- $image := .Values.defaults.image }}
+          {{- if and (hasKey .Values "pods") (hasKey .Values.pods "slurmd") (hasKey .Values.pods.slurmd "image") }}
+          {{- $image = .Values.pods.slurmd.image }}
+          {{- end }}
+          image: {{ $image }}
           imagePullPolicy: Always
           resources:
-            {{- toYaml .Values.slurmd.deployment.resources | nindent 12 }}
+            {{- $resources := deepCopy .Values.defaults.resources }}
+            {{- if hasKey .Values.pods.slurmd "resources" }}
+            {{- $resources = merge $resources .Values.pods.slurmd.resources }}
+            {{- end }}
+            {{- toYaml $resources | nindent 12 }}
           command: ["/bin/bash"]
           args:
             - /usr/local/bin/entrypoint.sh
@@ -63,11 +87,23 @@ spec:
           livenessProbe:
             tcpSocket:
               port: 6818
-            {{- toYaml .Values.probes.liveness | nindent 12 }}
+            {{- $livenessProbe := deepCopy .Values.defaults.probes.liveness }}
+            {{- if hasKey .Values.pods.slurmd "probes" }}
+            {{- if hasKey .Values.pods.slurmd.probes "liveness" }}
+            {{- $livenessProbe = merge $livenessProbe .Values.pods.slurmd.probes.liveness }}
+            {{- end }}
+            {{- end }}
+            {{- toYaml $livenessProbe | nindent 12 }}
           readinessProbe:
             tcpSocket:
               port: 6818
-            {{- toYaml .Values.probes.readiness | nindent 12 }}
+            {{- $readinessProbe := deepCopy .Values.defaults.probes.readiness }}
+            {{- if hasKey .Values.pods.slurmd "probes" }}
+            {{- if hasKey .Values.pods.slurmd.probes "readiness" }}
+            {{- $readinessProbe = merge $readinessProbe .Values.pods.slurmd.probes.readiness }}
+            {{- end }}
+            {{- end }}
+            {{- toYaml $readinessProbe | nindent 12 }}
       volumes:
         - name: slurmconf-configmap-volume
           configMap:
@@ -87,15 +123,21 @@ spec:
         {{- end }}
         {{- end }}
         {{- end }}
-      {{- with .Values.nodeSelector }}
       nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.affinity }}
+        {{- $nodeSelector := deepCopy .Values.defaults.nodeSelector }}
+        {{- if hasKey .Values.pods.slurmd "nodeSelector" }}
+        {{- $nodeSelector = merge $nodeSelector .Values.pods.slurmd.nodeSelector }}
+        {{- end }}
+        {{- toYaml $nodeSelector | nindent 8 }}
       affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.tolerations }}
+        {{- $affinity := deepCopy .Values.defaults.affinity }}
+        {{- if hasKey .Values.pods.slurmd "affinity" }}
+        {{- $affinity = merge $affinity .Values.pods.slurmd.affinity }}
+        {{- end }}
+        {{- toYaml $affinity | nindent 8 }}
       tolerations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- $tolerations := deepCopy .Values.defaults.tolerations }}
+        {{- if hasKey .Values.pods.slurmd "tolerations" }}
+        {{- $tolerations = merge $tolerations .Values.pods.slurmd.tolerations }}
+        {{- end }}
+        {{- toYaml $tolerations | nindent 8 }}

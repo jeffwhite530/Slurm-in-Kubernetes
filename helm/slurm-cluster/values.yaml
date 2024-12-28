@@ -1,33 +1,39 @@
-# MariaDB configuration
-mariadb:
-  deployment:
+# Default configurations
+defaults:
+  affinity: {}
+  image: docker-registry.your.domain:5000/slurm:24-11-0-1
+  imagePullSecrets: []
+  nodeSelector: {}
+  probes:
+    liveness:
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+    readiness:
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+  replicas: 1
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+  securityContext:
+    runAsUser: 980
+    runAsGroup: 980
+    fsGroup: 980
+  tolerations: []
+
+# The pods that will be launched
+pods:
+  mariadb:
     image: mariadb:11.6-ubi
     databaseName: slurm_accounting
-    resources:
-      requests:
-        memory: "1Gi"
-        cpu: "500m"
-      limits:
-        memory: "2Gi"
-        cpu: "1000m"
-  secret:
-    username: "slurm"
-    password: "${SLURM_DB_PASSWORD}"
 
-# Slurm components
-slurmdbd:
-  deployment:
-    image: docker-registry.jealwh.local:5000/slurm:24-11-0-1
-    resources:
-      requests:
-        memory: "1Gi"
-        cpu: "500m"
-      limits:
-        memory: "2Gi"
-        cpu: "1000m"
-slurmctld:
-  deployment:
-    image: docker-registry.jealwh.local:5000/slurm:24-11-0-1
+  slurmctld:
     resources:
       requests:
         memory: "2Gi"
@@ -35,10 +41,11 @@ slurmctld:
       limits:
         memory: "4Gi"
         cpu: "2000m"
-slurmd:
-  deployment:
-    image: docker-registry.jealwh.local:5000/slurm:24-11-0-1
-    replicaCount: 1
+
+  slurmdbd: {}
+
+  slurmd:
+    replicas: 2
     resources:
       requests:
         memory: "4Gi"
@@ -47,9 +54,7 @@ slurmd:
         memory: "4Gi"
         cpu: "1000m"
 
-# The Slurm node watcher (adds and removes slurmd nodes via scrontrol)
-nodeWatcher:
-  deployment:
+  nodeWatcher:
     resources:
       requests:
         cpu: 100m
@@ -129,8 +134,7 @@ volumes:
                 values:
                 - lavender
     # List more volumes and they will be mounted into the component's container.
-  slurmdbd: []
-  slurmd:
+  slurmd: []
     # slurmd does not require any volumes. The entries below are just examples.
     # NFS example
     #- name: home
@@ -180,27 +184,10 @@ volumes:
     #- name: scratch
     #  mountPath: /scratch
     #  size: 50Gi
-    #  type: dynamic
     #  storageClassName: fast-storage
     #  accessModes:
     #    - ReadWriteOnce
-
-# Health checks
-probes:
-  liveness:
-    initialDelaySeconds: 30
-    periodSeconds: 10
-    timeoutSeconds: 5
-  readiness:
-    initialDelaySeconds: 30
-    periodSeconds: 10
-    timeoutSeconds: 5
-
-# Security settings
-podSecurityContext:
-  runAsUser: 980
-  runAsGroup: 980
-  fsGroup: 980
+  slurmdbd: []
 
 # Ingress to expose slurmctld
 ingressNginx:
@@ -211,18 +198,6 @@ ingressNginx:
     tcp:
       configMapNamespace: ingress-nginx
       configMapName: tcp-services
-
-replicaCount: 1
-imagePullSecrets: []
-nameOverride: ""
-fullnameOverride: ""
-
-podAnnotations: {}
-podLabels: {}
-
-nodeSelector: {}
-tolerations: []
-affinity: {}
 
 metrics-server:
   args:

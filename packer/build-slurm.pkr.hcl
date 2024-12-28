@@ -24,8 +24,8 @@ variable "ansible_host" {
 }
 
 variable "image_name" {
-   default = "slurm"
-  # default = "docker-registry.jealwh.local:5000/slurm"
+  default = "slurm"
+  #default = "docker-registry.your.domain:5000/slurm"
 }
 
 locals {

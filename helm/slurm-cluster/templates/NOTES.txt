@@ -2,13 +2,13 @@ Thank you for installing {{ include "slurm-cluster.fullname" . }}!
 
 Your Slurm cluster has been deployed with the following components:
 
-1. MariaDB Database:
+1. MariaDB database:
    Service: {{ include "slurm-cluster.fullname" . }}-mariadb:3306
 
-2. Slurm Database Daemon (slurmdbd):
+2. Slurm database daemon (slurmdbd):
    Service: {{ include "slurm-cluster.fullname" . }}-slurmdbd:6819
 
-3. Slurm Controller (slurmctld):
+3. Slurm controller (slurmctld):
    Service: {{ include "slurm-cluster.fullname" . }}-slurmctld:6817
    {{- if .Values.ingressNginx.enabled }}
    External access: Available through nginx on port 6817
@@ -18,19 +18,31 @@ Your Slurm cluster has been deployed with the following components:
 4. Slurm node watcher
    Monitors the Kubernetes event stream to add or remove slurmd nodes from the Slurm controller.
 
-5. Compute Nodes (slurmd):
-   Initial replicas: {{ .Values.slurmd.deployment.replicaCount }}
+{{- $replicas := .Values.defaults.replicas }}
+{{- if and (hasKey .Values "pods") (hasKey .Values.pods "slurmd") }}
+{{- if kindIs "map" .Values.pods.slurmd }}
+{{- if hasKey .Values.pods.slurmd "replicas" }}
+{{- $replicas = .Values.pods.slurmd.replicas }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+5. Compute nodes (slurmd pods): {{ $replicas }}
 
 To verify your installation:
 
 1. Check that all pods are running:
    kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }}"
 
-2. View slurmctld logs:
+2. View component logs:
+   kubectl logs --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=mariadb"
+   kubectl logs --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=slurmdbd"
    kubectl logs --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=slurmctld"
+   kubectl logs --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=node-watcher"
+   kubectl logs --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=slurmd"
 
 3. Check cluster status (from slurmctld pod):
-   kubectl exec --namespace {{ .Release.Namespace }} deploy/{{ include "slurm-cluster.fullname" . }}-slurmctld -- sinfo
+   kubectl exec --namespace {{ .Release.Namespace }} statefulset/{{ include "slurm-cluster.fullname" . }}-slurmctld -- sinfo
 {{- if .Values.ingressNginx.enabled }}
 4. Verify TCP access is configured:
    kubectl get configmap -n ingress-nginx tcp-services -o yaml

@@ -50,7 +50,10 @@ data:
     PurgeUsageAfter=6month
     LogFile=/app/slurm/log/slurmdbd.log
     PidFile=/app/slurm/run/slurmdbd.pid
-    SlurmUser={{ .Values.podSecurityContext.runAsUser }}
+  {{- $slurmdbdrunAsUser := .Values.defaults.securityContext.runAsUser }}
+  {{- if and (hasKey .Values "pods") (hasKey .Values.pods "slurmdbd") (hasKey .Values.pods.slurmdbd "securityContext") (hasKey .Values.pods.slurmdbd.securityContext "runAsUser") }}  {{- $slurmdbdrunAsUser = .Values.pods.slurmdbd.securityContext.runAsUser }}
+  {{- end }}
+    SlurmUser={{ $slurmdbdrunAsUser }}
     StorageHost={{ include "slurm-cluster.fullname" . }}-mariadb-0
     StoragePass=STORAGE_PASS
     StorageType=accounting_storage/mysql
@@ -69,7 +72,7 @@ data:
     AuthType=auth/munge
     ClusterName={{ include "slurm-cluster.fullname" . }}
     SlurmctldHost={{ include "slurm-cluster.fullname" . }}-slurmctld-0
-    SlurmctldAddr={{ include "slurm-cluster.fullname" . }}-slurmctld-0.slurm-cluster.svc.cluster.local
+    #SlurmctldAddr={{ include "slurm-cluster.fullname" . }}-slurmctld-0.slurm-cluster.svc.cluster.local
     MpiDefault=none
     #ProctrackType=proctrack/cgroup
     ProctrackType=proctrack/linuxproc
@@ -79,8 +82,16 @@ data:
     SlurmdPidFile=/app/slurm/run/slurmd.pid
     SlurmdPort=6818
     SlurmdSpoolDir=/app/slurm/spool/slurmd
-    SlurmUser={{ .Values.podSecurityContext.runAsUser }}
-    SlurmdUser={{ .Values.podSecurityContext.runAsUser }}
+  {{- $slurmctldrunAsUser := .Values.defaults.securityContext.runAsUser }}
+  {{- if and (hasKey .Values "pods") (hasKey .Values.pods "slurmctld") (hasKey .Values.pods.slurmctld "securityContext") (hasKey .Values.pods.slurmctld.securityContext "runAsUser") }}
+  {{- $slurmctldrunAsUser = .Values.pods.slurmctd.securityContext.runAsUser }}
+  {{- end }}
+    SlurmUser={{ $slurmctldrunAsUser }}
+  {{- $slurmdrunAsUser := .Values.defaults.securityContext.runAsUser }}
+  {{- if and (hasKey .Values "pods") (hasKey .Values.pods "slurmd") (hasKey .Values.pods.slurmd "securityContext") (hasKey .Values.pods.slurmd.securityContext "runAsUser") }}
+  {{- $slurmdrunAsUser = .Values.pods.slurmd.securityContext.runAsUser }}
+  {{- end }}
+    SlurmdUser={{ $slurmdrunAsUser }}
     StateSaveLocation=/var/spool/slurmctld
     SwitchType=switch/none
     SlurmctldParameters=cloud_dns,enable_configless,write_config_on_change
