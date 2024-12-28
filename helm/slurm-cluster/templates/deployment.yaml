@@ -48,12 +48,18 @@ spec:
           volumeMounts:
             - name: etc-slurm-dir
               mountPath: /etc/slurm
-            - name: etc-munge-dir
-              mountPath: /etc/munge
             - name: run-dbus-dir
               mountPath: /run/dbus
             - name: var-spool-slurmd-dir
               mountPath: /var/spool/slurmd
+            {{- range $component, $config := (dict "munge" .Values.volumes.munge "slurmd" .Values.volumes.slurmd) }}
+            {{- if $config }}
+            {{- range $config }}
+            - name: {{ .name }}
+              mountPath: {{ .mountPath }}
+            {{- end }}
+            {{- end }}
+            {{- end }}
           livenessProbe:
             tcpSocket:
               port: 6818
@@ -68,13 +74,19 @@ spec:
             name: {{ include "slurm-cluster.fullname" . }}-slurm-config
         - name: etc-slurm-dir
           emptyDir: {}
-        - name: etc-munge-dir
-          persistentVolumeClaim:
-            claimName: {{ include "slurm-cluster.fullname" . }}-munge-pvc
         - name: run-dbus-dir
           emptyDir: {}
         - name: var-spool-slurmd-dir
           emptyDir: {}
+        {{- range $component, $config := (dict "munge" .Values.volumes.munge "slurmd" .Values.volumes.slurmd) }}
+        {{- if $config }}
+        {{- range $config }}
+        - name: {{ .name }}
+          persistentVolumeClaim:
+            claimName: {{ include "slurm-cluster.fullname" $ }}-{{ .name }}-pvc
+        {{- end }}
+        {{- end }}
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

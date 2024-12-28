@@ -13,28 +13,9 @@ mariadb:
   secret:
     username: "slurm"
     password: "${SLURM_DB_PASSWORD}"
-  storage:
-    # Storage for MariaDB data files (mounts to /var/lib/mysql)
-    data:
-      storageClass: local-ssd
-      size: 100Gi
-      localPath: /apps/slurm-cluster/mariadb/data
-      nodeAffinityHostnames:
-        - lavender
-
-# Munge configuration
-munge:
-  storage:
-    # Storage for munge key (mounts to /etc/munge)
-    data:
-      storageClass: local-ssd
-      size: 1Gi
-      localPath: /apps/slurm-cluster/munge/etc
-      nodeAffinityHostnames:
-        - lavender
 
 # Slurm components
-slurmdbdd:
+slurmdbd:
   deployment:
     image: docker-registry.jealwh.local:5000/slurm:24-11-0-1
     resources:
@@ -54,14 +35,6 @@ slurmctld:
       limits:
         memory: "4Gi"
         cpu: "2000m"
-  storage:
-    # Storage for Slurm state files (mounts to /var/spool/slurmctld)
-    data:
-      storageClass: local-ssd
-      size: 1Gi
-      localPath: /apps/slurm-cluster/slurmctld/spool
-      nodeAffinityHostnames:
-        - lavender
 slurmd:
   deployment:
     image: docker-registry.jealwh.local:5000/slurm:24-11-0-1
@@ -74,8 +47,8 @@ slurmd:
         memory: "4Gi"
         cpu: "1000m"
 
-# The Slurm node controller (adds and removes slurmd nodes via scrontrol)
-nodeController:
+# The Slurm node watcher (adds and removes slurmd nodes via scrontrol)
+nodeWatcher:
   deployment:
     resources:
       requests:
@@ -84,6 +57,133 @@ nodeController:
       limits:
         cpu: 200m
         memory: 256Mi
+
+volumes:
+  mariadb:
+    # A persistent volume for /var/lib/mysql is required.
+    - name: mariadb-data
+      mountPath: /var/lib/mysql
+      # Optional, defaults to Retain
+      reclaimPolicy: Delete
+      size: 50Gi
+      storageClassName: local-ssd
+      accessModes:
+        - ReadWriteOnce
+      spec:
+        hostPath:
+          path: /apps/slurm-cluster/mariadb/data
+          type: DirectoryOrCreate
+        nodeAffinity:
+          required:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - lavender
+    # List more volumes and they will be mounted into the component's container.
+  munge:
+    # A persistent volume for /etc/munge is required.
+    - name: munge-etc
+      mountPath: /etc/munge
+      # Optional, defaults to Retain
+      reclaimPolicy: Delete
+      size: 1Gi
+      storageClassName: local-ssd
+      accessModes:
+        - ReadWriteMany
+      spec:
+        hostPath:
+          path: /apps/slurm-cluster/munge/etc
+          type: DirectoryOrCreate
+        nodeAffinity:
+          required:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - lavender
+    # List more volumes and they will be mounted into the component's container.
+  nodeWatcher: []
+  slurmctld:
+    # A persistent volume for /var/spool/slurmctld is required.
+    - name: slurmctld-spool
+      mountPath: /var/spool/slurmctld
+      # Optional, defaults to Retain
+      reclaimPolicy: Delete
+      size: 10Gi
+      storageClassName: local-ssd
+      accessModes:
+        - ReadWriteOnce
+      spec:
+        hostPath:
+          path: /apps/slurm-cluster/slurmctld/spool
+          type: DirectoryOrCreate
+        nodeAffinity:
+          required:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - lavender
+    # List more volumes and they will be mounted into the component's container.
+  slurmdbd: []
+  slurmd:
+    # slurmd does not require any volumes. The entries below are just examples.
+    # NFS example
+    #- name: home
+    #  mountPath: /home
+    #  # Optional, defaults to Retain
+    #  reclaimPolicy: Delete
+    #  size: 10Gi
+    #  storageClassName: local-ssd
+    #  accessModes: 
+    #    - ReadWriteMany
+    #  spec:
+    #    nfs:
+    #      server: aster.your.domain
+    #      path: /apps/slurm-cluster/slurmd/home
+
+    # HostPath example
+    #- name: data
+    #  mountPath: /data
+    #  # Optional, defaults to Retain
+    #  reclaimPolicy: Delete
+    #  size: 10Gi
+    #  storageClassName: local-ssd
+    #  accessModes:
+    #    - ReadWriteMany
+    #  spec:
+    #    hostPath:
+    #      path: /apps/slurm-cluster/slurmd/data
+    #      type: DirectoryOrCreate
+    #    nodeAffinity:
+    #      required:
+    #        nodeSelectorTerms:
+    #        - matchExpressions:
+    #          - key: kubernetes.io/hostname
+    #            operator: In
+    #            values:
+    #            - lavender
+
+    # Using an existing PV
+    #- name: shared
+    #  mountPath: /shared
+    #  size: 100Gi
+    #  volumeName: shared-pv
+    #  accessModes:
+    #    - ReadWriteMany
+
+    # Creating a new PV
+    #- name: scratch
+    #  mountPath: /scratch
+    #  size: 50Gi
+    #  type: dynamic
+    #  storageClassName: fast-storage
+    #  accessModes:
+    #    - ReadWriteOnce
 
 # Health checks
 probes:

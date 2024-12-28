@@ -1,83 +1,23 @@
+{{- range $component, $config := (dict "mariadb" .Values.volumes.mariadb "munge" .Values.volumes.munge "slurmdbd" .Values.volumes.slurmdbd "slurmctld" .Values.volumes.slurmctld "slurmd" .Values.volumes.slurmd) }}
+{{- if $config }}
+{{- range $config }}
+{{- if not .volumeName }}
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: {{ include "slurm-cluster.fullname" . }}-mariadb-pv
+  name: {{ include "slurm-cluster.fullname" $ }}-{{ .name }}-pv
   labels:
-    {{- include "slurm-cluster.labels" . | nindent 4 }}
-    app.kubernetes.io/component: mariadb
+    {{- include "slurm-cluster.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
 spec:
   capacity:
-    storage: {{ .Values.mariadb.storage.data.size }}
-  volumeMode: Filesystem
-  accessModes:
-  - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: {{ .Values.mariadb.storage.data.storageClass }}
-  local:
-    path: {{ .Values.mariadb.storage.data.localPath }}
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-      - matchExpressions:
-        - key: kubernetes.io/hostname
-          operator: In
-          values:
-          {{- range .Values.mariadb.storage.data.nodeAffinityHostnames }}
-          - {{ . }}
-          {{- end }}
+    storage: {{ .size }}
+  accessModes: {{ .accessModes | toJson }}
+  persistentVolumeReclaimPolicy: {{ .reclaimPolicy | default "Retain" }}
+  storageClassName: {{ .storageClassName }}
+  {{- toYaml .spec | nindent 2 }}
 ---
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: {{ include "slurm-cluster.fullname" . }}-munge-pv
-  labels:
-    {{- include "slurm-cluster.labels" . | nindent 4 }}
-    app.kubernetes.io/component: munge
-spec:
-  capacity:
-    storage: {{ .Values.munge.storage.data.size }}
-  volumeMode: Filesystem
-  accessModes:
-  - ReadWriteMany
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: {{ .Values.munge.storage.data.storageClass }}
-  local:
-    path: {{ .Values.munge.storage.data.localPath }}
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-      - matchExpressions:
-        - key: kubernetes.io/hostname
-          operator: In
-          values:
-          {{- range .Values.munge.storage.data.nodeAffinityHostnames }}
-          - {{ . }}
-          {{- end }}
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: {{ include "slurm-cluster.fullname" . }}-slurmctld-spool-pv
-  labels:
-    {{- include "slurm-cluster.labels" . | nindent 4 }}
-    app.kubernetes.io/component: slurmctld
-spec:
-  capacity:
-    storage: {{ .Values.slurmctld.storage.data.size }}
-  volumeMode: Filesystem
-  accessModes:
-  - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: {{ .Values.slurmctld.storage.data.storageClass }}
-  local:
-    path: {{ .Values.slurmctld.storage.data.localPath }}
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-      - matchExpressions:
-        - key: kubernetes.io/hostname
-          operator: In
-          values:
-          {{- range .Values.slurmctld.storage.data.nodeAffinityHostnames }}
-          - {{ . }}
-          {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

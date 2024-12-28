@@ -42,8 +42,12 @@ spec:
           ports:
             - containerPort: 3306
           volumeMounts:
-            - name: mariadb-data
-              mountPath: /var/lib/mysql
+            {{- if .Values.volumes.mariadb }}
+            {{- range .Values.volumes.mariadb }}
+            - name: {{ .name }}
+              mountPath: {{ .mountPath }}
+            {{- end }}
+            {{- end }}
             - name: mariadb-config
               mountPath: /etc/mysql/conf.d
           livenessProbe:
@@ -71,15 +75,28 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
   volumeClaimTemplates:
+    {{- if .Values.volumes.mariadb }}
+    {{- range .Values.volumes.mariadb }}
     - metadata:
-        name: mariadb-data
+        name: {{ .name }}
+        labels:
+          app.kubernetes.io/component: mariadb
       spec:
-        accessModes: [ "ReadWriteOnce" ]
-        storageClassName: {{ .Values.mariadb.storage.data.storageClass | quote }}
+        accessModes: {{ .accessModes | toJson }}
+        {{- if and .volumeName (not .storageClass) }}
+        volumeName: {{ .volumeName }}
+        {{- else if and .storageClass (not .volumeName) }}
+        volumeName: {{ include "slurm-cluster.fullname" $ }}-{{ .name }}-pv
+        storageClassName: {{ .storageClass }}
+        {{- else }}
+        volumeName: {{ include "slurm-cluster.fullname" $ }}-{{ .name }}-pv
+        storageClassName: {{ .storageClassName }}
+        {{- end }}
         resources:
           requests:
-            storage: {{ .Values.mariadb.storage.data.size | quote }}
-        volumeMode: Filesystem
+            storage: {{ .size }}
+    {{- end }}
+    {{- end }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -105,10 +122,10 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       initContainers:
         - name: copy-slurmdbd-conf
-          image: {{ .Values.slurmdbdd.deployment.image }}
+          image: {{ .Values.slurmdbd.deployment.image }}
           imagePullPolicy: Always
           resources:
-            {{- toYaml .Values.slurmdbdd.deployment.resources | nindent 12 }}
+            {{- toYaml .Values.slurmdbd.deployment.resources | nindent 12 }}
           command: ["/bin/bash"]
           args:
             - -c
@@ -135,10 +152,10 @@ spec:
                   key: password
       containers:
         - name: slurmdbd
-          image: {{ .Values.slurmdbdd.deployment.image }}
+          image: {{ .Values.slurmdbd.deployment.image }}
           imagePullPolicy: Always
           resources:
-            {{- toYaml .Values.slurmdbdd.deployment.resources | nindent 12 }}
+            {{- toYaml .Values.slurmdbd.deployment.resources | nindent 12 }}
           command: ["/bin/bash"]
           args:
             - /usr/local/bin/entrypoint.sh 
@@ -146,8 +163,14 @@ spec:
           volumeMounts:
             - name: etc-slurm-dir
               mountPath: /etc/slurm
-            - name: etc-munge-dir
-              mountPath: /etc/munge
+            {{- range $component, $config := (dict "munge" .Values.volumes.munge "slurmdbd" .Values.volumes.slurmdbd) }}
+            {{- if $config }}
+            {{- range $config }}
+            - name: {{ .name }}
+              mountPath: {{ .mountPath }}
+            {{- end }}
+            {{- end }}
+            {{- end }}
           ports:
             - containerPort: 6819
           livenessProbe:
@@ -164,9 +187,34 @@ spec:
             name: {{ include "slurm-cluster.fullname" . }}-slurmdbd-config
         - name: etc-slurm-dir
           emptyDir: {}
-        - name: etc-munge-dir
+        {{- range .Values.volumes.munge }}
+        - name: {{ .name }}
           persistentVolumeClaim:
-            claimName: {{ include "slurm-cluster.fullname" . }}-munge-pvc
+            claimName: {{ include "slurm-cluster.fullname" $ }}-{{ .name }}-pvc
+        {{- end }}
+  volumeClaimTemplates:
+    {{- if .Values.volumes.slurmdbd }}
+    {{- range .Values.volumes.slurmdbd }}
+    - metadata:
+        name: {{ .name }}
+        labels:
+          app.kubernetes.io/component: slurmdbd
+      spec:
+        accessModes: {{ .accessModes | toJson }}
+        {{- if and .volumeName (not .storageClass) }}
+        volumeName: {{ .volumeName }}
+        {{- else if and .storageClass (not .volumeName) }}
+        volumeName: {{ include "slurm-cluster.fullname" $ }}-{{ .name }}-pv
+        storageClassName: {{ .storageClass }}
+        {{- else }}
+        volumeName: {{ include "slurm-cluster.fullname" $ }}-{{ .name }}-pv
+        storageClassName: {{ .storageClassName }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .size }}
+    {{- end }}
+    {{- end }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -192,10 +240,10 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       initContainers:
         - name: copy-slurmdbd-conf
-          image: {{ .Values.slurmdbdd.deployment.image }}
+          image: {{ .Values.slurmdbd.deployment.image }}
           imagePullPolicy: Always
           resources:
-            {{- toYaml .Values.slurmdbdd.deployment.resources | nindent 12 }}
+            {{- toYaml .Values.slurmdbd.deployment.resources | nindent 12 }}
           command: ["/bin/bash"]
           args:
             - -c
@@ -248,10 +296,14 @@ spec:
           volumeMounts:
             - name: etc-slurm-dir
               mountPath: /etc/slurm
-            - name: etc-munge-dir
-              mountPath: /etc/munge
-            - name: slurmctld-spool
-              mountPath: /var/spool/slurmctld
+            {{- range $component, $config := (dict "munge" .Values.volumes.munge "slurmctld" .Values.volumes.slurmctld) }}
+            {{- if $config }}
+            {{- range $config }}
+            - name: {{ .name }}
+              mountPath: {{ .mountPath }}
+            {{- end }}
+            {{- end }}
+            {{- end }}
           livenessProbe:
             tcpSocket:
               port: 6817
@@ -269,22 +321,34 @@ spec:
             name: {{ include "slurm-cluster.fullname" . }}-slurm-config
         - name: etc-slurm-dir
           emptyDir: {}
-        - name: etc-munge-dir
+        {{- range .Values.volumes.munge }}
+        - name: {{ .name }}
           persistentVolumeClaim:
-            claimName: {{ include "slurm-cluster.fullname" . }}-munge-pvc
+            claimName: {{ include "slurm-cluster.fullname" $ }}-{{ .name }}-pvc
+        {{- end }}
   volumeClaimTemplates:
+    {{- if .Values.volumes.slurmctld }}
+    {{- range .Values.volumes.slurmctld }}
     - metadata:
-        name: slurmctld-spool
+        name: {{ .name }}
         labels:
-          {{- include "slurm-cluster.labels" . | nindent 10 }}
           app.kubernetes.io/component: slurmctld
       spec:
-        accessModes:
-          - ReadWriteOnce
-        storageClassName: {{ .Values.slurmctld.storage.data.storageClass }}
+        accessModes: {{ .accessModes | toJson }}
+        {{- if and .volumeName (not .storageClass) }}
+        volumeName: {{ .volumeName }}
+        {{- else if and .storageClass (not .volumeName) }}
+        volumeName: {{ include "slurm-cluster.fullname" $ }}-{{ .name }}-pv
+        storageClassName: {{ .storageClass }}
+        {{- else }}
+        volumeName: {{ include "slurm-cluster.fullname" $ }}-{{ .name }}-pv
+        storageClassName: {{ .storageClassName }}
+        {{- end }}
         resources:
           requests:
-            storage: {{ .Values.slurmctld.storage.data.size }}
+            storage: {{ .size }}
+    {{- end }}
+    {{- end }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -314,7 +378,7 @@ spec:
           image: {{ .Values.slurmd.deployment.image }}
           imagePullPolicy: Always
           resources:
-            {{- toYaml .Values.nodeController.deployment.resources | nindent 12 }}
+            {{- toYaml .Values.nodeWatcher.deployment.resources | nindent 12 }}
           command: ["/bin/bash"]
           args:
             - /usr/local/bin/entrypoint.sh
@@ -325,10 +389,16 @@ spec:
                 fieldRef:
                   fieldPath: metadata.namespace
           volumeMounts:
+            {{- range $component, $config := (dict "munge" .Values.volumes.munge "nodeWatcher" .Values.volumes.nodeWatcher) }}
+            {{- if $config }}
+            {{- range $config }}
+            - name: {{ .name }}
+              mountPath: {{ .mountPath }}
+            {{- end }}
+            {{- end }}
+            {{- end }}
             - name: etc-slurm-dir
               mountPath: /etc/slurm
-            - name: etc-munge-dir
-              mountPath: /etc/munge
           livenessProbe:
             exec:
               command: ["pgrep", "-f", "slurm-node-watcher.py"]
@@ -341,6 +411,31 @@ spec:
         - name: etc-slurm-dir
           configMap:
             name: {{ include "slurm-cluster.fullname" . }}-slurm-config
-        - name: etc-munge-dir
+        {{- range .Values.volumes.munge }}
+        - name: {{ .name }}
           persistentVolumeClaim:
-            claimName: {{ include "slurm-cluster.fullname" . }}-munge-pvc
+            claimName: {{ include "slurm-cluster.fullname" $ }}-{{ .name }}-pvc
+        {{- end }}
+  volumeClaimTemplates:
+    {{- if .Values.volumes.nodeWatcher }}
+    {{- range .Values.volumes.nodeWatcher }}
+    - metadata:
+        name: {{ .name }}
+        labels:
+          app.kubernetes.io/component: node-watcher
+      spec:
+        accessModes: {{ .accessModes | toJson }}
+        {{- if and .volumeName (not .storageClass) }}
+        volumeName: {{ .volumeName }}
+        {{- else if and .storageClass (not .volumeName) }}
+        volumeName: {{ include "slurm-cluster.fullname" $ }}-{{ .name }}-pv
+        storageClassName: {{ .storageClass }}
+        {{- else }}
+        volumeName: {{ include "slurm-cluster.fullname" $ }}-{{ .name }}-pv
+        storageClassName: {{ .storageClassName }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .size }}
+    {{- end }}
+    {{- end }}
