@@ -1,7 +1,5 @@
 # Slurm in Kubernetes
 
-<!-- markdownlint-disable MD012 MD013 MD034 -->
-
 This project provides a containerized Slurm cluster solution running on Kubernetes.
 
 ## Features
