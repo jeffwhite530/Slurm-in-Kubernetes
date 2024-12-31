@@ -1,4 +1,4 @@
-<!-- markdownlint-disable MD012 MD022 MD031 MD032 MD034 MD041 -->
+# Slurm in Kubernetes
 
 This project provides a containerized Slurm cluster solution running on Kubernetes.
 
@@ -16,10 +16,12 @@ This repository includes:
 - **Ansible Playbooks**: For automated system configuration and service deployment
 - **Kubernetes Manifests**: For orchestrating the containerized Slurm environment
 - **Helm Charts**: For packaging and simplified deployment
+- **GitHub Action Templates**: For continuous integration/deployment pipelines
 
 ## Prerequisites
 
 Ensure these tools are installed on your system:
+
 - Ansible
 - Docker
 - HashiCorp Packer
@@ -83,6 +85,7 @@ Ensure these tools are installed on your system:
    ```
 
    You should see something like this:
+
    ```plaintext
    NAME: slurm-cluster
    LAST DEPLOYED: Sat Dec 28 15:51:42 2024
@@ -391,9 +394,9 @@ This shows how to launch test jobs into Slurm after the cluster has deployed.
 
       ```plaintext
       Defaulted container "slurmctld" out of: slurmctld, copy-slurmdbd-conf (init), copy-slurm-conf (init)
-      JobID           JobName      State                  NodeList               StdOut               StdErr 
-      ------------ ---------- ---------- ------------------------- -------------------- -------------------- 
-      1             hello-wo+  COMPLETED slurm-cluster-slurmd-77f+      /tmp/job-%j.out      /tmp/job-%j.err 
+      JobID           JobName      State                  NodeList               StdOut               StdErr
+      ------------ ---------- ---------- ------------------------- -------------------- --------------------
+      1             hello-wo+  COMPLETED slurm-cluster-slurmd-77f+      /tmp/job-%j.out      /tmp/job-%j.err
       1.batch           batch  COMPLETED slurm-cluster-slurmd-77f+
       ```
 
