@@ -39,7 +39,11 @@ spec:
         {{- end }}
       initContainers:
         - name: copy-slurm-conf
-          image: {{ default .Values.defaults.image .Values.pods.slurmd.image }}
+          {{- $image := .Values.defaults.image }}
+          {{- if and (hasKey .Values "pods") (hasKey .Values.pods "slurmd") (hasKey .Values.pods.slurmd "image") }}
+          {{- $image = .Values.pods.slurmd.image }}
+          {{- end }}
+          image: {{ $image }}
           imagePullPolicy: Always
           command: ["/bin/bash"]
           args:
