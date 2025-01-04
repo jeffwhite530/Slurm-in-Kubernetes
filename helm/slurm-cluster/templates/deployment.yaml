@@ -89,8 +89,11 @@ spec:
             {{- end }}
             {{- end }}
           livenessProbe:
-            tcpSocket:
-              port: 6818
+            exec:
+              command:
+              - /bin/bash
+              - -c
+              - "pgrep -f '^/bin/bash /usr/local/bin/entrypoint.sh' || pgrep -f '^/usr/sbin/slurmd'"
             {{- $livenessProbe := deepCopy .Values.defaults.probes.liveness }}
             {{- if hasKey .Values.pods.slurmd "probes" }}
             {{- if hasKey .Values.pods.slurmd.probes "liveness" }}

@@ -9,10 +9,12 @@ defaults:
       initialDelaySeconds: 30
       periodSeconds: 10
       timeoutSeconds: 5
+      failureThreshold: 1
     readiness:
       initialDelaySeconds: 30
       periodSeconds: 10
       timeoutSeconds: 5
+      failureThreshold: 3
   replicas: 1
   resources:
     requests:

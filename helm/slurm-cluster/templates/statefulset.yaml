@@ -76,8 +76,11 @@ spec:
             - name: mariadb-config
               mountPath: /etc/mysql/conf.d
           livenessProbe:
-            tcpSocket:
-              port: 3306
+            exec:
+              command:
+              - /bin/bash
+              - -c
+              - "pgrep -x mariadbd"
             {{- $livenessProbe := deepCopy .Values.defaults.probes.liveness }}
             {{- if hasKey .Values.pods.mariadb "probes" }}
             {{- if hasKey .Values.pods.mariadb.probes "liveness" }}
@@ -249,8 +252,11 @@ spec:
           ports:
             - containerPort: 6819
           livenessProbe:
-            tcpSocket:
-              port: 6819
+            exec:
+              command:
+              - /bin/bash
+              - -c
+              - "pgrep -f '^/bin/bash /usr/local/bin/entrypoint.sh' || pgrep -f '^/usr/sbin/slurmdbd'"
             {{- $livenessProbe := deepCopy .Values.defaults.probes.liveness }}
             {{- if hasKey .Values.pods.slurmdbd "probes" }}
             {{- if hasKey .Values.pods.slurmdbd.probes "liveness" }}
@@ -450,8 +456,11 @@ spec:
             {{- end }}
             {{- end }}
           livenessProbe:
-            tcpSocket:
-              port: 6817
+            exec:
+              command:
+              - /bin/bash
+              - -c
+              - "pgrep -f '^/bin/bash /usr/local/bin/entrypoint.sh' || pgrep -f '^/usr/sbin/slurmctld'"
             {{- $livenessProbe := deepCopy .Values.defaults.probes.liveness }}
             {{- if hasKey .Values.pods.slurmctld "probes" }}
             {{- if hasKey .Values.pods.slurmctld.probes "liveness" }}
@@ -600,7 +609,10 @@ spec:
               mountPath: /etc/slurm
           livenessProbe:
             exec:
-              command: ["pgrep", "-f", "slurm-node-watcher.py"]
+              command:
+              - /bin/bash
+              - -c
+              - "pgrep -f '^/bin/bash /usr/local/bin/entrypoint.sh' || pgrep -f '^/usr/bin/python3 /usr/local/bin/slurm-node-watcher.py'"
             {{- $livenessProbe := deepCopy .Values.defaults.probes.liveness }}
             {{- if hasKey .Values.pods.nodeWatcher "probes" }}
             {{- if hasKey .Values.pods.nodeWatcher.probes "liveness" }}
