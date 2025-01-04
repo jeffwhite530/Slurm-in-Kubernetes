@@ -51,6 +51,17 @@ Ensure these tools are installed on your system:
          password: "your-actual-password-here"
     ```
 
+1. Ensure the storage specified in your values.yaml allows access by the UID also specified there.
+
+    ```shell
+    STORAGE_PATH=/apps/slurm-cluster
+
+    mkdir -p "${STORAGE_PATH}/slurmctld/spool"
+    mkdir -p "${STORAGE_PATH}/apps/slurm-cluster/mariadb/data"
+    mkdir -p "${STORAGE_PATH}/apps/slurm-cluster/munge/etc"
+    sudo chown -R 980:980 "${STORAGE_PATH}"
+    ```
+
 1. Set the namespace (or use `-n YOUR-NAMESPACE` in every command).
 
     ```shell
