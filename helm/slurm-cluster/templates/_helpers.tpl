@@ -60,3 +60,14 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Get the MariaDB root password - either from values.yaml or generate new
+*/}}
+{{- define "mariadb.getPassword" -}}
+{{- if (and .Values.secrets .Values.secrets.mariadb .Values.secrets.mariadb.password) -}}
+    {{- .Values.secrets.mariadb.password -}}
+{{- else -}}
+    {{- randAlphaNum 20 -}}
+{{- end -}}
+{{- end -}}

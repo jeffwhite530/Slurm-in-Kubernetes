@@ -5,6 +5,12 @@ Your Slurm cluster has been deployed with the following components:
 1. MariaDB database:
    Service: {{ include "slurm-cluster.fullname" . }}-mariadb:3306
 
+   {{- if .Release.IsInstall }}
+
+   To retrieve the MariaDB root password used during deployment, run:
+      kubectl get secret -n {{ .Release.Namespace }} {{ include "slurm-cluster.fullname" . }}-mariadb-root -o jsonpath="{.data.password}" | base64 -d ; echo
+   {{- end }}
+
 2. Slurm database daemon (slurmdbd):
    Service: {{ include "slurm-cluster.fullname" . }}-slurmdbd:6819
 
