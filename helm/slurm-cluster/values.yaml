@@ -201,10 +201,6 @@ ingressNginx:
       configMapNamespace: ingress-nginx
       configMapName: tcp-services
 
-metrics-server:
-  args:
-    - --kubelet-insecure-tls
-
 serviceAccount:
   # Specifies whether a service account should be created
   create: false
