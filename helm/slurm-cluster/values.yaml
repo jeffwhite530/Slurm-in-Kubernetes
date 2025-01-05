@@ -9,10 +9,12 @@ defaults:
       initialDelaySeconds: 30
       periodSeconds: 10
       timeoutSeconds: 5
+      failureThreshold: 1
     readiness:
       initialDelaySeconds: 30
       periodSeconds: 10
       timeoutSeconds: 5
+      failureThreshold: 3
   replicas: 1
   resources:
     requests:
@@ -198,10 +200,6 @@ ingressNginx:
     tcp:
       configMapNamespace: ingress-nginx
       configMapName: tcp-services
-
-metrics-server:
-  args:
-    - --kubelet-insecure-tls
 
 serviceAccount:
   # Specifies whether a service account should be created

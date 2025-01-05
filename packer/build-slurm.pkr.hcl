@@ -11,21 +11,21 @@ packer {
   }
 }
 
-variable "base_image" {
-  default = "debian:bookworm"
-}
-
 variable "slurm_version_tag" {
   default = "24-11-0-1"
-}
-
-variable "ansible_host" {
-  default = "default"
 }
 
 variable "image_name" {
   default = "slurm"
   #default = "docker-registry.your.domain:5000/slurm"
+}
+
+variable "base_image" {
+  default = "debian:bookworm"
+}
+
+variable "ansible_host" {
+  default = "default"
 }
 
 locals {

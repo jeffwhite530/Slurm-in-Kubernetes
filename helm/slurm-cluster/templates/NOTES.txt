@@ -5,6 +5,12 @@ Your Slurm cluster has been deployed with the following components:
 1. MariaDB database:
    Service: {{ include "slurm-cluster.fullname" . }}-mariadb:3306
 
+   {{- if .Release.IsInstall }}
+
+   To retrieve the MariaDB root password used during deployment, run:
+      kubectl get secret -n {{ .Release.Namespace }} {{ include "slurm-cluster.fullname" . }}-mariadb-root -o jsonpath="{.data.password}" | base64 -d ; echo
+   {{- end }}
+
 2. Slurm database daemon (slurmdbd):
    Service: {{ include "slurm-cluster.fullname" . }}-slurmdbd:6819
 
@@ -32,17 +38,17 @@ Your Slurm cluster has been deployed with the following components:
 To verify your installation:
 
 1. Check that all pods are running:
-   kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }}"
+   kubectl get pods -n {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }}"
 
 2. View component logs:
-   kubectl logs --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=mariadb"
-   kubectl logs --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=slurmdbd"
-   kubectl logs --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=slurmctld"
-   kubectl logs --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=node-watcher"
-   kubectl logs --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=slurmd"
+   kubectl logs -n {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=mariadb"
+   kubectl logs -n {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=slurmdbd"
+   kubectl logs -n {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=slurmctld"
+   kubectl logs -n {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=node-watcher"
+   kubectl logs -n {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=slurmd"
 
 3. Check cluster status (from slurmctld pod):
-   kubectl exec --namespace {{ .Release.Namespace }} statefulset/{{ include "slurm-cluster.fullname" . }}-slurmctld -- sinfo
+   kubectl exec -n {{ .Release.Namespace }} statefulset/{{ include "slurm-cluster.fullname" . }}-slurmctld -- sinfo
 {{- if .Values.ingressNginx.enabled }}
 4. Verify TCP access is configured:
    kubectl get configmap -n ingress-nginx tcp-services -o yaml
