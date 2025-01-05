@@ -13,7 +13,7 @@ This project provides a containerized Slurm cluster solution running on Kubernet
 
 These components are launched by the system as Kubernetes pods.
 
-- **MariadDB**: Backend database for Slurm job accounting.
+- **MariaDB**: Backend database for Slurm job accounting.
 - **slurmdbd**: Handles Slurm's database communication.
 - **slurmctld**: Slurm's central scheduler managing jobs and resources.
 - **slurmd**: Compute node agent that executes jobs.
@@ -76,18 +76,28 @@ This will use Packer, Docker, and Ansible to build a docker image on your PC.
 
 ### Set the MariaDB username and password
 
-Two options:
+A password is needed by Slurm to communicate with the MariaDB instance that will be deployed.
 
-1. Do not set a MariaDB password. One will be generated automatically with the user set to `root`.
+#### Option 1: Automatic
 
-1. Create `helm/secrets.yaml` and set your database username/pass.
+Do not include a MariaDB password in your settings. One will be generated automatically and the user set to `root`. After deployment this password can be retrieved from Kubernetes:
 
-    ```plaintext
-    mariadb:
-        secret:
-            username: "slurm"
-            password: "your-actual-password-here"
-    ```
+```shell
+kubectl get secret slurm-cluster-mariadb-root -o jsonpath="{.data.password}" | base64 -d ; echo
+```
+
+#### Option 2: secrets.yaml
+
+Create `helm/secrets.yaml` and set your database username/pass.
+
+```plaintext
+mariadb:
+    secret:
+        username: "slurm"
+        password: "your-actual-password-here"
+```
+
+#### Using an exising database
 
 When the MariaDB pod has a persistentVolume mounted at /var/lib/mysql, that volume may contain an existing database (for example, a previous deployment of Slurm). In that case, the existing database's password must be set in the yaml file.
 
