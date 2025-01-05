@@ -118,7 +118,7 @@ When the MariaDB pod has a persistentVolume mounted at /var/lib/mysql, that volu
         reclaimPolicy: Delete
         size: 10Gi
         storageClassName: local-ssd
-        accessModes: 
+        accessModes:
             - ReadWriteMany
         spec:
             nfs:
