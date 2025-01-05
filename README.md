@@ -45,7 +45,26 @@ Ensure these tools are installed on your system:
 
 This will use Packer, Docker, and Ansible to build a docker image on your PC.
 
-1. Build the image.
+1. Edit `packer/build-slurm.pkr.hcl` and set variables.
+
+    This must match a tag on <https://github.com/SchedMD/slurm/tags>.
+
+    ```plaintext
+    variable "slurm_version_tag" {
+        default = "24-11-0-1"
+    }
+    ```
+
+    Name your new image.
+
+    ```plaintext
+    variable "image_name" {
+        default = "slurm"
+        #default = "docker-registry.your.domain:5000/slurm"
+    }
+    ```
+
+1. Use packer to build the image.
 
     ```shell
     cd packer
@@ -73,6 +92,10 @@ This will use Packer, Docker, and Ansible to build a docker image on your PC.
     ```
 
 1. Finally, push this image to your Docker registry.
+
+    ```shell
+    docker push registry.your.domain:5000/slurm:24-11-0-1
+    ```
 
 ### Set the MariaDB username and password
 
