@@ -4,13 +4,24 @@ This project provides a containerized Slurm cluster solution running on Kubernet
 
 ## Features
 
-- **Automatic Installation**: Automated deployment of Slurm's components and worker nodes (pods)
-- **Database Integration**: Preconfigured MariaDB backend for job accounting and reporting
-- **Common Foundation**: Built with [Debian](https://hub.docker.com/_/debian) and [Slurm](https://github.com/SchedMD/slurm)
+- **Automatic Installation**: Automated deployment of Slurm's components and worker nodes (pods).
+- **Database Integration**: Preconfigured MariaDB backend for job accounting and reporting.
+- **Extensible**: Flexible deployment via Helm, with support for diverse storage configurations, including automatic provisioning of persistent volumes (PVs) or integration with pre-defined PVs.
+- **Common Foundation**: Built with [Debian](https://hub.docker.com/_/debian), [MariaDB](https://mariadb.org/), and [Slurm](https://github.com/SchedMD/slurm).
 
 ## Components
 
-This repository includes:
+These components are launched by the system as Kubernetes pods.
+
+- **MariadDB**: Backend database for Slurm job accounting.
+- **slurmdbd**: Handles Slurm's database communication.
+- **slurmctld**: Slurm's central scheduler managing jobs and resources.
+- **slurmd**: Compute node agent that executes jobs.
+- **Slurm Node Watcher**: Syncs Kubernetes pods with Slurm nodes.
+
+Additionally, a munge daemon is integrated into components to facilitate secure authentication with Slurm.
+
+## Build Environment
 
 - **HashiCorp Packer Templates**: For building optimized Slurm container images
 - **Ansible Playbooks**: For automated system configuration and service deployment
@@ -18,7 +29,9 @@ This repository includes:
 - **Helm Charts**: For packaging and simplified deployment
 - **GitHub Action Templates**: For continuous integration/deployment pipelines
 
-## Prerequisites
+## Deploying
+
+### Prerequisites
 
 Ensure these tools are installed on your system:
 
@@ -28,9 +41,11 @@ Ensure these tools are installed on your system:
 - kubectl (configured for your Kubernetes cluster)
 - Helm
 
-## Deploying
+### Build the Slurm container image
 
-1. Build the Slurm container image.
+This will use Packer, Docker, and Ansible to build a docker image on your PC.
+
+1. Build the image.
 
     ```shell
     cd packer
@@ -38,29 +53,99 @@ Ensure these tools are installed on your system:
     packer init build-slurm.pkr.hcl
 
     packer build build-slurm.pkr.hcl
-
-    cd ..
     ```
+
+1. Update `helm/slurm-cluster/values.yaml` to set the image name, including registry and tag.
+
+    It should be set in the default section:
+
+    ```yaml
+    defaults:
+        image: docker-registry.your.domain:5000/slurm:24-11-0-1
+    ```
+
+    It can also be set individually on each component:
+
+    ```yaml
+    pods:
+        slurmd:
+            image: docker-registry.your.domain:5000/slurm:24-11-0-1-special
+    ```
+
+1. Finally, push this image to your Docker registry.
+
+### Set the MariaDB username and password
+
+Two options:
+
+1. Do not set a MariaDB password. One will be generated automatically with the user set to `root`.
 
 1. Create `helm/secrets.yaml` and set your database username/pass.
 
     ```plaintext
     mariadb:
-      secret:
-         username: "slurm"
-         password: "your-actual-password-here"
+        secret:
+            username: "slurm"
+            password: "your-actual-password-here"
     ```
 
-1. Ensure the storage specified in your values.yaml allows access by the UID also specified there.
+When the MariaDB pod has a persistentVolume mounted at /var/lib/mysql, that volume may contain an existing database (for example, a previous deployment of Slurm). In that case, the existing database's password must be set in the yaml file.
+
+### Configure storage
+
+1. Edit `helm/slurm-cluster/values.yaml` and set parameters for persistentVolumes. Three of them are required:
+
+    ```yaml
+    volumes:
+        mariadb:
+            - name: mariadb-data
+            mountPath: /var/lib/mysql
+        munge:
+            - name: munge-etc
+            mountPath: /etc/munge
+        slurmctld:
+            - name: slurmctld-spool
+            mountPath: /var/spool/slurmctld
+    ```
+
+    More volumes can be added at any mountPath. For example, to mount a shared filesystem into the slurmd nodes:
+
+    ```yaml
+    # NFS example
+    - name: home
+        mountPath: /home
+        # Optional, defaults to Retain
+        reclaimPolicy: Delete
+        size: 10Gi
+        storageClassName: local-ssd
+        accessModes: 
+            - ReadWriteMany
+        spec:
+            nfs:
+                server: aster.your.domain
+                path: /apps/slurm-cluster/slurmd/home
+    ```
+
+1. Ensure the storage specified in your values.yaml allows access by the UID also specified.
+
+    ```yaml
+    defaults:
+        securityContext:
+            runAsUser: 980
+            runAsGroup: 980
+            fsGroup: 980
+    ```
 
     ```shell
     STORAGE_PATH=/apps/slurm-cluster
 
     mkdir -p "${STORAGE_PATH}/slurmctld/spool"
-    mkdir -p "${STORAGE_PATH}/apps/slurm-cluster/mariadb/data"
-    mkdir -p "${STORAGE_PATH}/apps/slurm-cluster/munge/etc"
+    mkdir -p "${STORAGE_PATH}/mariadb/data"
+    mkdir -p "${STORAGE_PATH}/munge/etc"
     sudo chown -R 980:980 "${STORAGE_PATH}"
     ```
+
+### Install the Helm chart
 
 1. Set the namespace (or use `-n YOUR-NAMESPACE` in every command).
 
@@ -69,7 +154,9 @@ Ensure these tools are installed on your system:
     kubectl config set-context --current --namespace=YOUR-NAMESPACE
     ```
 
-1. Edit `helm/slurm-cluster/values.yaml` with your preferences then validate the helm chart values. This should create valid Kubernetes YAML. If the validate step shows an error, review your values.yaml and secrets.yaml and try again.
+1. Edit `helm/slurm-cluster/values.yaml` with your preferences then validate the helm chart values. This should create valid Kubernetes YAML. If the validate step shows an error, review your values.yaml and try again.
+
+    _Note: Add `-f secrets.yaml` if you have a secrets file._
 
     ```shell
     cd helm
@@ -89,11 +176,15 @@ Ensure these tools are installed on your system:
 
     ```shell
     kubectl create namespace YOUR-NAMESPACE
+    ```
 
+    _Note: Add `-f secrets.yaml` if you have a secrets file._
+
+    ```shell
     helm install slurm-cluster slurm-cluster/ -f secrets.yaml
     ```
 
-    You should see something like this:
+    The result should should be something like this:
 
     ```plaintext
     NAME: slurm-cluster
@@ -109,6 +200,9 @@ Ensure these tools are installed on your system:
 
     1. MariaDB database:
         Service: slurm-cluster-mariadb:3306
+
+        To retrieve the MariaDB root password used during deployment, run:
+            kubectl get secret -n YOUR-NAMESPACE slurm-cluster-mariadb-root -o jsonpath="{.data.password}" | base64 -d ; echo
 
     2. Slurm database daemon (slurmdbd):
         Service: slurm-cluster-slurmdbd:6819
@@ -421,7 +515,31 @@ This shows how to launch test jobs into Slurm after the cluster has deployed.
         Job completed at Sun Dec 22 23:31:33 UTC 2024
         ```
 
-The slurmd deployment can be scaled manually (e.g. `kubectl scale deployment/slurm-cluster-slurmd --replicas=N`). The node-watcher pod will automatically register new slurmd pods with Slurm when they appear and remove them from Slurm when a pod is deleted.
+## Adding and removing slurmd nodes
+
+**Warning:** Reducing the replica count will delete slurmd pods in Kubernetes. This can result in the loss of active jobs on the affected nodes, as the Kubernetes scheduler is unaware of Slurm's job queue or state.
+
+The slurmd deployment can be scaled manually using:
+
+```shell
+kubectl scale deployment/slurm-cluster-slurmd --replicas=N
+```
+
+The Slurm Node Watcher pod will automatically register new slurmd pods with Slurm when they appear and remove them from Slurm when a pod is deleted. However, it is recommended to edit `helm/slurm-cluster/values.yaml` to set the number of replicas then upgrade the chart:
+
+```yaml
+pods:
+    slurmd:
+        replicas: 2
+```
+
+_Note: Add `-f secrets.yaml` if you have a secrets file._
+
+```shell
+cd helm/
+
+helm upgrade slurm-cluster slurm-cluster/
+```
 
 ## Teardown
 
