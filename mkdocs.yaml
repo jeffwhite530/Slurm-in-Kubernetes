@@ -1,0 +1,23 @@
+site_name: Slurm in Kubernetes
+theme:
+  name: readthedocs
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+
+nav:
+  - About: index.md
+  - Deploying: deploying.md
+  - Verifying the Deployment: verifying-deployment.md
+  - Launching a Test Job: launching-a-test-job.md
+  - Adding and Removing slurmd Nodes: add-remove-slurmd-nodes.md
+  - Teardown a Cluster: teardown-a-cluster.md
+  - Project:
+    - Source: source.md
+    - License: License.md
