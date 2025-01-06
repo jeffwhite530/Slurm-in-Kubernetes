@@ -7,7 +7,7 @@
     ```
 
     ```plaintext
-    NAME           NAMESPACE      REVISION  UPDATED     STATUS              CHART  APP  VERSION   
+    NAME           NAMESPACE      REVISION  UPDATED     STATUS              CHART  APP  VERSION
     slurm-cluster  slurm-cluster  2         2024-12-22  14:23:07.923440676  -0500  EST  deployed  slurm-cluster-0.1.024.11.0.1
     ```
 
