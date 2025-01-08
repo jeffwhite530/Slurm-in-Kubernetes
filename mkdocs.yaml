@@ -1,4 +1,7 @@
 site_name: Slurm in Kubernetes
+site_url: https://jeffwhite530.github.io/Slurm-in-Kubernetes/
+repo_url: https://github.com/jeffwhite530/Slurm-in-Kubernetes
+
 theme:
   name: readthedocs
 

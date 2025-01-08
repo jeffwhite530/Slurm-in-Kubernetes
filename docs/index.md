@@ -20,11 +20,3 @@ These components are launched by the system as Kubernetes pods.
 - **Slurm Node Watcher**: Syncs Kubernetes pods with Slurm nodes.
 
 Additionally, a munge daemon is integrated into components to facilitate secure authentication with Slurm.
-
-## Build Environment
-
-- **HashiCorp Packer Templates**: For building optimized Slurm container images
-- **Ansible Playbooks**: For automated system configuration and service deployment
-- **Kubernetes Manifests**: For orchestrating the containerized Slurm environment
-- **Helm Charts**: For packaging and simplified deployment
-- **GitHub Action Templates**: For continuous integration/deployment pipelines
