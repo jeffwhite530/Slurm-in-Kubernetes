@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+         <loc>https://jeffwhite530.github.io/Slurm-in-Kubernetes/</loc>
+         <lastmod>2025-01-08</lastmod>
+    </url>
+    <url>
+         <loc>https://jeffwhite530.github.io/Slurm-in-Kubernetes/License/</loc>
+         <lastmod>2025-01-08</lastmod>
+    </url>
+    <url>
+         <loc>https://jeffwhite530.github.io/Slurm-in-Kubernetes/add-remove-slurmd-nodes/</loc>
+         <lastmod>2025-01-08</lastmod>
+    </url>
+    <url>
+         <loc>https://jeffwhite530.github.io/Slurm-in-Kubernetes/deploying/</loc>
+         <lastmod>2025-01-08</lastmod>
+    </url>
+    <url>
+         <loc>https://jeffwhite530.github.io/Slurm-in-Kubernetes/launching-a-test-job/</loc>
+         <lastmod>2025-01-08</lastmod>
+    </url>
+    <url>
+         <loc>https://jeffwhite530.github.io/Slurm-in-Kubernetes/source/</loc>
+         <lastmod>2025-01-08</lastmod>
+    </url>
+    <url>
+         <loc>https://jeffwhite530.github.io/Slurm-in-Kubernetes/teardown-a-cluster/</loc>
+         <lastmod>2025-01-08</lastmod>
+    </url>
+    <url>
+         <loc>https://jeffwhite530.github.io/Slurm-in-Kubernetes/verifying-deployment/</loc>
+         <lastmod>2025-01-08</lastmod>
+    </url>
+</urlset>

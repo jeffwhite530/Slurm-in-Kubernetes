@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://jeffwhite530.github.io/Slurm-in-Kubernetes/verifying-deployment/" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Verifying the Deployment - Slurm in Kubernetes</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Verifying the Deployment";
+        var mkdocs_page_input_path = "verifying-deployment.md";
+        var mkdocs_page_url = "/Slurm-in-Kubernetes/verifying-deployment/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> Slurm in Kubernetes
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">About</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../deploying/">Deploying</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Verifying the Deployment</a>
+    <ul class="current">
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../launching-a-test-job/">Launching a Test Job</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../add-remove-slurmd-nodes/">Adding and Removing slurmd Nodes</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../teardown-a-cluster/">Teardown a Cluster</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Project</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../source/">Source</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../License/">License</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">Slurm in Kubernetes</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Verifying the Deployment</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/jeffwhite530/Slurm-in-Kubernetes/edit/master/docs/verifying-deployment.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="verifying-the-deployment">Verifying the Deployment</h1>
+<ol>
+<li>
+<p>Verify the helm release status.</p>
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>helm<span class="w"> </span>ls
+</span></code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>NAME           NAMESPACE      REVISION  UPDATED     STATUS              CHART  APP  VERSION
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>slurm-cluster  slurm-cluster  2         2024-12-22  14:23:07.923440676  -0500  EST  deployed  slurm-cluster-0.1.024.11.0.1
+</span></code></pre></div>
+</li>
+<li>
+<p>Verify the resources launched.</p>
+<ol>
+<li>
+<p>Did the pods start and are they ready?</p>
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-l<span class="w"> </span><span class="s2">&quot;app.kubernetes.io/instance=slurm-cluster&quot;</span>
+</span></code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>NAME                                         READY  STATUS   RESTARTS  AGE
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>slurm-cluster-mariadb-0                      1/1    Running  0         13m
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>slurm-cluster-node-watcher-0                 1/1    Running  0         13m
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>slurm-cluster-slurmctld-0                    1/1    Running  0         13m
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>slurm-cluster-slurmd-77f8554695-wjmgr        1/1    Running  0         13m
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>slurm-cluster-slurmdbd-0                     1/1    Running  0         13m
+</span></code></pre></div>
+</li>
+<li>
+<p>Did MariaDB launch successfully?</p>
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>logs<span class="w"> </span>-l<span class="w"> </span><span class="s2">&quot;app.kubernetes.io/instance=slurm-cluster,app.kubernetes.io/component=mariadb&quot;</span><span class="w"> </span>--tail<span class="o">=</span>-1
+</span></code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>2024-12-22 19:16:40+00:00 [Note] [Entrypoint]: Entrypoint script for MariaDB Server 11.6.2 started.
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>2024-12-22 19:16:40+00:00 [Note] [Entrypoint]: MariaDB upgrade not required
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>2024-12-22 19:16:40 0 [Note] Starting MariaDB 11.6.2-MariaDB source revision d8dad8c3b54cd09fefce7bc3b9749f427eed9709 server_uid ECAXpVBJpbtJNmAVANHBFmfORe4= as process 1
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>2024-12-22 19:16:40 0 [Note] InnoDB: Compressed tables use zlib 1.2.11
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>2024-12-22 19:16:40 0 [Note] InnoDB: Number of transaction pools: 1
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>2024-12-22 19:16:40 0 [Note] InnoDB: Using crc32 + pclmulqdq instructions
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>2024-12-22 19:16:40 0 [Note] mariadbd: O_TMPFILE is not supported on /tmp (disabling future attempts)
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>2024-12-22 19:16:40 0 [Note] InnoDB: Using liburing
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>2024-12-22 19:16:40 0 [Note] InnoDB: Initializing buffer pool, total size = 4.000GiB, chunk size = 64.000MiB
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>2024-12-22 19:16:40 0 [Note] InnoDB: Completed initialization of buffer pool
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>2024-12-22 19:16:40 0 [Note] InnoDB: File system buffers for log disabled (block size=512 bytes)
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>2024-12-22 19:16:40 0 [Note] InnoDB: End of log at LSN=2547714
+</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>2024-12-22 19:16:40 0 [Note] InnoDB: Opened 3 undo tablespaces
+</span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>2024-12-22 19:16:40 0 [Note] InnoDB: 128 rollback segments in 3 undo tablespaces are active.
+</span><span id="__span-5-15"><a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>2024-12-22 19:16:40 0 [Note] InnoDB: Setting file &#39;./ibtmp1&#39; size to 12.000MiB. Physically writing the file full; Please wait ...
+</span><span id="__span-5-16"><a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>2024-12-22 19:16:40 0 [Note] InnoDB: File &#39;./ibtmp1&#39; size is now 12.000MiB.
+</span><span id="__span-5-17"><a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>2024-12-22 19:16:40 0 [Note] InnoDB: log sequence number 2547714; transaction id 5438
+</span><span id="__span-5-18"><a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>2024-12-22 19:16:40 0 [Note] Plugin &#39;FEEDBACK&#39; is disabled.
+</span><span id="__span-5-19"><a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>2024-12-22 19:16:40 0 [Note] InnoDB: Loading buffer pool(s) from /var/lib/mysql/ib_buffer_pool
+</span><span id="__span-5-20"><a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>2024-12-22 19:16:40 0 [Note] Plugin &#39;wsrep-provider&#39; is disabled.
+</span><span id="__span-5-21"><a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>2024-12-22 19:16:40 0 [Note] InnoDB: Buffer pool(s) load completed at 241222 19:16:40
+</span><span id="__span-5-22"><a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>2024-12-22 19:16:41 0 [Note] Server socket created on IP: &#39;0.0.0.0&#39;.
+</span><span id="__span-5-23"><a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>2024-12-22 19:16:41 0 [Note] Server socket created on IP: &#39;::&#39;.
+</span><span id="__span-5-24"><a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>2024-12-22 19:16:41 0 [Note] mariadbd: Event Scheduler: Loaded 0 events
+</span><span id="__span-5-25"><a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>2024-12-22 19:16:41 0 [Note] mariadbd: ready for connections.
+</span><span id="__span-5-26"><a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>Version: &#39;11.6.2-MariaDB&#39;  socket: &#39;/run/mariadb/mariadb.sock&#39;  port: 3306  MariaDB Server
+</span></code></pre></div>
+</li>
+<li>
+<p>Did slurmdbd launch successfully?</p>
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kubectl<span class="w"> </span>logs<span class="w"> </span>-l<span class="w"> </span><span class="s2">&quot;app.kubernetes.io/instance=slurm-cluster,app.kubernetes.io/component=slurmdbd&quot;</span><span class="w"> </span>--tail<span class="o">=</span>-1
+</span></code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>Defaulted container &quot;slurmdbd&quot; out of: slurmdbd, copy-slurmdbd-conf (init)
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>2024-12-22T19:16:37.290Z Starting entrypoint script
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>2024-12-22T19:16:37.291Z Preparing for munge daemon
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>2024-12-22T19:16:37.301Z Checking for munge key
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>2024-12-22T19:16:37.302Z Munge key already exists at /etc/munge/munge.key
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>2024-12-22T19:16:37.304Z Starting munge daemon
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>2024-12-22T19:16:38.307Z Preparing for slurmdbd daemon
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>2024-12-22T19:16:38.313Z Waiting for mariadb to become available at slurm-cluster-mariadb-0
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>2024-12-22T19:16:39.341Z Attempting to connect to slurm-cluster-mariadb-0:3306...
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>2024-12-22T19:16:45.357Z Attempting to connect to slurm-cluster-mariadb-0:3306...
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>2024-12-22T19:16:51.377Z Attempting to connect to slurm-cluster-mariadb-0:3306...
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>2024-12-22T19:16:57.389Z Attempting to connect to slurm-cluster-mariadb-0:3306...
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>2024-12-22T19:17:03.409Z Attempting to connect to slurm-cluster-mariadb-0:3306...
+</span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>2024-12-22T19:17:09.425Z Attempting to connect to slurm-cluster-mariadb-0:3306...
+</span><span id="__span-7-15"><a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>2024-12-22T19:17:14.430Z mariadb is up at slurm-cluster-mariadb-0 - proceeding with startup
+</span><span id="__span-7-16"><a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>2024-12-22T19:17:14.431Z Starting slurmdbd daemon
+</span><span id="__span-7-17"><a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>slurmdbd: accounting_storage/as_mysql: _check_mysql_concat_is_sane: MySQL server version is: 11.6.2-MariaDB
+</span><span id="__span-7-18"><a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>slurmdbd: accounting_storage/as_mysql: init: Accounting storage MYSQL plugin loaded
+</span><span id="__span-7-19"><a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>slurmdbd: slurmdbd version 24.11.0 started
+</span></code></pre></div>
+</li>
+<li>
+<p>Did slurmctld start successfully?</p>
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kubectl<span class="w"> </span>logs<span class="w"> </span>-l<span class="w"> </span><span class="s2">&quot;app.kubernetes.io/instance=slurm-cluster,app.kubernetes.io/component=slurmctld&quot;</span><span class="w"> </span>--tail<span class="o">=</span>-1
+</span></code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>2024-12-22T19:16:43.399Z Starting entrypoint script
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>2024-12-22T19:16:43.400Z Preparing for munge daemon
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>2024-12-22T19:16:43.410Z Checking for munge key
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>2024-12-22T19:16:43.412Z Munge key already exists at /etc/munge/munge.key
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>2024-12-22T19:16:43.413Z Starting munge daemon
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>2024-12-22T19:16:44.416Z Preparing for slurmctld daemon
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>2024-12-22T19:16:44.421Z Waiting for slurmdbd to become available at slurm-cluster-slurmdbd-0
+</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>2024-12-22T19:16:45.453Z Attempting to connect to slurm-cluster-slurmdbd-0:6819...
+</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>2024-12-22T19:16:51.469Z Attempting to connect to slurm-cluster-slurmdbd-0:6819...
+</span><span id="__span-9-10"><a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>2024-12-22T19:17:26.555Z slurmdbd is up at slurm-cluster-slurmdbd-0 - proceeding with startup
+</span><span id="__span-9-11"><a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>2024-12-22T19:17:26.556Z Starting slurmctld daemon
+</span><span id="__span-9-12"><a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>slurmctld: slurmctld version 24.11.0 started on cluster slurm-cluster(2175)
+</span><span id="__span-9-13"><a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>slurmctld: cred/munge: init: Munge credential signature plugin loaded
+</span><span id="__span-9-14"><a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>slurmctld: select/linear: init: Linear node selection plugin loaded with argument 20
+</span><span id="__span-9-15"><a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>slurmctld: select/cons_tres: init: select/cons_tres loaded
+</span><span id="__span-9-16"><a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>slurmctld: accounting_storage/slurmdbd: init: Accounting storage SLURMDBD plugin loaded
+</span><span id="__span-9-17"><a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>slurmctld: accounting_storage/slurmdbd: _load_dbd_state: recovered 0 pending RPCs
+</span><span id="__span-9-18"><a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>slurmctld: accounting_storage/slurmdbd: clusteracct_storage_p_register_ctld: Registering slurmctld at port 6817 with slurmdbd
+</span><span id="__span-9-19"><a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a>slurmctld: _read_slurm_cgroup_conf: No cgroup.conf file (/etc/slurm/cgroup.conf), using defaults
+</span><span id="__span-9-20"><a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a>slurmctld: No memory enforcing mechanism configured.
+</span><span id="__span-9-21"><a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a>slurmctld: topology/default: init: topology Default plugin loaded
+</span><span id="__span-9-22"><a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a>slurmctld: sched: Backfill scheduler plugin loaded
+</span><span id="__span-9-23"><a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a>slurmctld: Recovered state of 1 nodes
+</span><span id="__span-9-24"><a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a>slurmctld: Recovered information about 0 jobs
+</span><span id="__span-9-25"><a id="__codelineno-9-25" name="__codelineno-9-25" href="#__codelineno-9-25"></a>slurmctld: select/cons_tres: part_data_create_array: select/cons_tres: preparing for 1 partitions
+</span><span id="__span-9-26"><a id="__codelineno-9-26" name="__codelineno-9-26" href="#__codelineno-9-26"></a>slurmctld: Recovered state of 0 reservations
+</span><span id="__span-9-27"><a id="__codelineno-9-27" name="__codelineno-9-27" href="#__codelineno-9-27"></a>slurmctld: State of 0 triggers recovered
+</span><span id="__span-9-28"><a id="__codelineno-9-28" name="__codelineno-9-28" href="#__codelineno-9-28"></a>slurmctld: read_slurm_conf: backup_controller not specified
+</span><span id="__span-9-29"><a id="__codelineno-9-29" name="__codelineno-9-29" href="#__codelineno-9-29"></a>slurmctld: select/cons_tres: select_p_reconfigure: select/cons_tres: reconfigure
+</span><span id="__span-9-30"><a id="__codelineno-9-30" name="__codelineno-9-30" href="#__codelineno-9-30"></a>slurmctld: select/cons_tres: part_data_create_array: select/cons_tres: preparing for 1 partitions
+</span><span id="__span-9-31"><a id="__codelineno-9-31" name="__codelineno-9-31" href="#__codelineno-9-31"></a>slurmctld: Running as primary controller
+</span></code></pre></div>
+</li>
+<li>
+<p>Did a slurmd instance start successfully?</p>
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>kubectl<span class="w"> </span>logs<span class="w"> </span>-l<span class="w"> </span><span class="s2">&quot;app.kubernetes.io/instance=slurm-cluster,app.kubernetes.io/component=slurmd&quot;</span><span class="w"> </span>--tail<span class="o">=</span>-1
+</span></code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>2024-12-22T19:18:02.574Z Starting entrypoint script
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>2024-12-22T19:18:02.575Z Preparing for munge daemon
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>2024-12-22T19:18:02.585Z Checking for munge key
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>2024-12-22T19:18:02.586Z Munge key already exists at /etc/munge/munge.key
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>2024-12-22T19:18:02.588Z Starting munge daemon
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>2024-12-22T19:18:03.591Z Preparing for slurmd daemon
+</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>2024-12-22T19:18:03.596Z Waiting for slurmctld to become available at slurm-cluster-slurmctld-0
+</span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>2024-12-22T19:18:03.599Z slurmctld is up at slurm-cluster-slurmctld-0 - proceeding with startup
+</span><span id="__span-11-9"><a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>2024-12-22T19:18:03.606Z Getting memory amount from cgroups v2
+</span><span id="__span-11-10"><a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>4096
+</span><span id="__span-11-11"><a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>2024-12-22T19:18:03.609Z Starting slurmd daemon
+</span><span id="__span-11-12"><a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>slurmd: warning: Running with local config file despite slurmctld having been setup for configless operation
+</span><span id="__span-11-13"><a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>slurmd: slurmd version 24.11.0 started
+</span><span id="__span-11-14"><a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>slurmd: slurmd started on Sun, 22 Dec 2024 19:18:03 +0000
+</span><span id="__span-11-15"><a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>slurmd: CPUs=1 Boards=1 Sockets=1 Cores=1 Threads=1 Memory=128717 TmpDisk=180686 Uptime=80365 CPUSpecList=(null) FeaturesAvail=(null) FeaturesActive=(null)
+</span></code></pre></div>
+</li>
+<li>
+<p>Did the node watcher start successfully?</p>
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>kubectl<span class="w"> </span>logs<span class="w"> </span>-l<span class="w"> </span><span class="s2">&quot;app.kubernetes.io/instance=slurm-cluster,app.kubernetes.io/component=node-watcher&quot;</span><span class="w"> </span>--tail<span class="o">=</span>-1
+</span></code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>2024-12-22T19:16:34.778Z Starting entrypoint script
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>2024-12-22T19:16:34.779Z Preparing for munge daemon
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>2024-12-22T19:16:34.789Z Checking for munge key
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>2024-12-22T19:16:34.790Z Munge key already exists at /etc/munge/munge.key
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>2024-12-22T19:16:34.792Z Starting munge daemon
+</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>2024-12-22T19:16:35.873Z Preparing for slurm-node-watcher daemon
+</span><span id="__span-13-7"><a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>2024-12-22T19:16:35.876Z Waiting for slurmctld to become available at slurm-cluster-slurmctld-0
+</span><span id="__span-13-8"><a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>2024-12-22T19:16:36.909Z Attempting to connect to slurm-cluster-slurmctld-0:6817...
+</span><span id="__span-13-9"><a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>2024-12-22T19:16:42.925Z Attempting to connect to slurm-cluster-slurmctld-0:6817...
+</span><span id="__span-13-10"><a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>2024-12-22T19:17:36.059Z slurmctld is up at slurm-cluster-slurmctld-0 - proceeding with startup
+</span><span id="__span-13-11"><a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>2024-12-22T19:17:36.061Z Starting slurm-node-watcher daemon
+</span><span id="__span-13-12"><a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>2024-12-22 19:17:37,483 - INFO - Starting Slurm node controller
+</span><span id="__span-13-13"><a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>2024-12-22 19:17:37,484 - INFO - Performing initial sync...
+</span><span id="__span-13-14"><a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>2024-12-22 19:17:37,598 - INFO - Removed node slurm-cluster-slurmd-77f8554695-p7s2h
+</span><span id="__span-13-15"><a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>2024-12-22 19:17:37,598 - INFO - Initial sync complete
+</span><span id="__span-13-16"><a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>2024-12-22 19:17:37,598 - INFO - Starting to watch for pod events...
+</span></code></pre></div>
+</li>
+</ol>
+</li>
+</ol>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../deploying/" class="btn btn-neutral float-left" title="Deploying"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../launching-a-test-job/" class="btn btn-neutral float-right" title="Launching a Test Job">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/jeffwhite530/Slurm-in-Kubernetes" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="../deploying/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../launching-a-test-job/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
