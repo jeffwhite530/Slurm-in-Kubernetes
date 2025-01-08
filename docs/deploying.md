@@ -45,7 +45,7 @@ This will use Packer, Docker, and Ansible to build a docker image on your PC.
 
 1. Update `helm/slurm-cluster/values.yaml` to set the image name, including registry and tag.
 
-    It should be set in the default section:
+    It should be set in the defaults section:
 
     ```yaml
     defaults:

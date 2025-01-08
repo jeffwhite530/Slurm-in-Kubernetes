@@ -19,9 +19,5 @@ pods:
 _Note: Add `-f secrets.yaml` if you have a secrets file._
 
 ```shell
-cd helm/
-```
-
-```shell
-helm upgrade slurm-cluster slurm-cluster/
+helm upgrade slurm-cluster helm/slurm-cluster/
 ```
