@@ -129,13 +129,14 @@ spec:
           app.kubernetes.io/component: mariadb
       spec:
         accessModes: {{ .accessModes | toJson }}
+        {{- $namespace := $.Release.Namespace }}
         {{- if and .volumeName (not .storageClass) }}
         volumeName: {{ .volumeName }}
         {{- else if and .storageClass (not .volumeName) }}
-        volumeName: {{ include "slurm-cluster.fullname" $ }}-{{ .name }}-pv
+        volumeName: {{ include "slurm-cluster.fullname" $ }}-{{ $namespace }}-{{ .name }}-pv
         storageClassName: {{ .storageClass }}
         {{- else }}
-        volumeName: {{ include "slurm-cluster.fullname" $ }}-{{ .name }}-pv
+        volumeName: {{ include "slurm-cluster.fullname" $ }}-{{ $namespace }}-{{ .name }}-pv
         storageClassName: {{ .storageClassName }}
         {{- end }}
         resources:
@@ -312,13 +313,14 @@ spec:
           app.kubernetes.io/component: slurmdbd
       spec:
         accessModes: {{ .accessModes | toJson }}
+        {{- $namespace := $.Release.Namespace }}
         {{- if and .volumeName (not .storageClass) }}
         volumeName: {{ .volumeName }}
         {{- else if and .storageClass (not .volumeName) }}
-        volumeName: {{ include "slurm-cluster.fullname" $ }}-{{ .name }}-pv
+        volumeName: {{ include "slurm-cluster.fullname" $ }}-{{ $namespace }}-{{ .name }}-pv
         storageClassName: {{ .storageClass }}
         {{- else }}
-        volumeName: {{ include "slurm-cluster.fullname" $ }}-{{ .name }}-pv
+        volumeName: {{ include "slurm-cluster.fullname" $ }}-{{ $namespace }}-{{ .name }}-pv
         storageClassName: {{ .storageClassName }}
         {{- end }}
         resources:
@@ -519,13 +521,14 @@ spec:
           app.kubernetes.io/component: slurmctld
       spec:
         accessModes: {{ .accessModes | toJson }}
+        {{- $namespace := $.Release.Namespace }}
         {{- if and .volumeName (not .storageClass) }}
         volumeName: {{ .volumeName }}
         {{- else if and .storageClass (not .volumeName) }}
-        volumeName: {{ include "slurm-cluster.fullname" $ }}-{{ .name }}-pv
+        volumeName: {{ include "slurm-cluster.fullname" $ }}-{{ $namespace }}-{{ .name }}-pv
         storageClassName: {{ .storageClass }}
         {{- else }}
-        volumeName: {{ include "slurm-cluster.fullname" $ }}-{{ .name }}-pv
+        volumeName: {{ include "slurm-cluster.fullname" $ }}-{{ $namespace }}-{{ .name }}-pv
         storageClassName: {{ .storageClassName }}
         {{- end }}
         resources:
@@ -666,13 +669,14 @@ spec:
           app.kubernetes.io/component: node-watcher
       spec:
         accessModes: {{ .accessModes | toJson }}
+        {{- $namespace := $.Release.Namespace }}
         {{- if and .volumeName (not .storageClass) }}
         volumeName: {{ .volumeName }}
         {{- else if and .storageClass (not .volumeName) }}
-        volumeName: {{ include "slurm-cluster.fullname" $ }}-{{ .name }}-pv
+        volumeName: {{ include "slurm-cluster.fullname" $ }}-{{ $namespace }}-{{ .name }}-pv
         storageClassName: {{ .storageClass }}
         {{- else }}
-        volumeName: {{ include "slurm-cluster.fullname" $ }}-{{ .name }}-pv
+        volumeName: {{ include "slurm-cluster.fullname" $ }}-{{ $namespace }}-{{ .name }}-pv
         storageClassName: {{ .storageClassName }}
         {{- end }}
         resources:

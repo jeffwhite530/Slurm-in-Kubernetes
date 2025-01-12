@@ -1,10 +1,12 @@
 {{- range $component, $config := (dict "munge" .Values.volumes.munge "slurmd" .Values.volumes.slurmd) }}
 {{- if $config }}
 {{- range $config }}
+{{- $fullname := (include "slurm-cluster.fullname" $) }}
+{{- $namespace := $.Release.Namespace }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "slurm-cluster.fullname" $ }}-{{ .name }}-pvc
+  name: {{ $fullname }}-{{ .name }}-pvc
   labels:
     {{- include "slurm-cluster.labels" $ | nindent 4 }}
     app.kubernetes.io/component: {{ $component }}
@@ -16,10 +18,10 @@ spec:
   {{- if and .volumeName (not .storageClass) }}
   volumeName: {{ .volumeName }}
   {{- else if and .storageClass (not .volumeName) }}
-  volumeName: {{ include "slurm-cluster.fullname" $ }}-{{ .name }}-pv
+  volumeName: {{ $fullname }}-{{ $namespace }}-{{ .name }}-pv
   storageClassName: {{ .storageClass }}
   {{- else }}
-  volumeName: {{ include "slurm-cluster.fullname" $ }}-{{ .name }}-pv
+  volumeName: {{ $fullname }}-{{ $namespace }}-{{ .name }}-pv
   storageClassName: {{ .storageClassName }}
   {{- end }}
 ---

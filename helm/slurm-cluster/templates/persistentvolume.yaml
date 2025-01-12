@@ -2,10 +2,12 @@
 {{- if $config }}
 {{- range $config }}
 {{- if not .volumeName }}
+{{- $fullname := (include "slurm-cluster.fullname" $) }}
+{{- $namespace := $.Release.Namespace }}
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: {{ include "slurm-cluster.fullname" $ }}-{{ .name }}-pv
+  name: {{ $fullname }}-{{ $namespace }}-{{ .name }}-pv
   labels:
     {{- include "slurm-cluster.labels" $ | nindent 4 }}
     app.kubernetes.io/component: {{ $component }}
